@@ -33,6 +33,10 @@ const playbackDurations: Record<BacktestGraphSpeed, number> = {
 
 const speedOptions: BacktestGraphSpeed[] = [1, 2, 5, 10]
 
+const chartAxisLineColor = 'rgba(107, 118, 132, 0.18)'
+const chartGridLineColor = 'rgba(107, 118, 132, 0.1)'
+const chartAxisLabelColor = '#9aa4b2'
+
 const videoDownloadFormats: VideoDownloadFormat[] = [
   { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', extension: 'mp4' },
   { mimeType: 'video/mp4;codecs=avc1.42E01E', extension: 'mp4' },
@@ -161,10 +165,10 @@ const getActionVisual = (action: BacktestGraphAction) => {
     return { color: '#0891b2', label: '재매수', lineType: 'solid' as const, symbol: 'diamond', width: 2.4 }
   }
   if (action.action.includes('하락매도')) {
-    return { color: '#d9480f', label: '하락매도', lineType: 'dashed' as const, symbol: 'circle', width: 1.7 }
+    return { color: '#d9480f', label: '매도', lineType: 'dashed' as const, symbol: 'circle', width: 1.7 }
   }
   if (action.action.includes('급락')) {
-    return { color: '#7c3aed', label: '급락매도', lineType: 'solid' as const, symbol: 'diamond', width: 2.8 }
+    return { color: '#7c3aed', label: '전량매도', lineType: 'solid' as const, symbol: 'diamond', width: 2.8 }
   }
   switch (action.tone) {
     case 'buy':
@@ -207,6 +211,20 @@ const getStrategyLevelVisual = (level: BacktestGraphStrategyLevel) => {
     default:
       return { color: '#0b6bff', label: '매수 기준', lineType: 'dashed' as const }
   }
+}
+
+const formatActionQuantity = (quantity: number) => {
+  if (!Number.isFinite(quantity) || quantity <= 0) return ''
+  if (Number.isInteger(quantity)) return `${quantity.toLocaleString('ko-KR')}주`
+
+  return `${quantity.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}주`
+}
+
+const getActionPointLabel = (action: BacktestGraphAction) => {
+  const visual = getActionVisual(action)
+  const quantity = formatActionQuantity(action.quantity)
+
+  return quantity ? `${visual.label} ${quantity}` : visual.label
 }
 
 const isTradeAction = (action: BacktestGraphAction) =>
@@ -399,11 +417,12 @@ export function BacktestGraph({
       const yMin = priceMin === priceMax ? priceMin * 0.98 : priceMin * 0.985
       const yMax = priceMin === priceMax ? priceMax * 1.02 : priceMax * 1.015
       const profitAbsMax = Math.max(...profitValues.map((value) => Math.abs(value)), 1)
-      const eventScatter = visibleActions.map((action) => {
+      const eventScatter = visibleActions.filter(isTradeAction).map((action) => {
         const visual = getActionVisual(action)
         return {
           value: [action.index, action.price],
           name: action.title,
+          labelText: getActionPointLabel(action),
           itemStyle: {
             color: visual.color,
             borderColor: '#ffffff',
@@ -418,7 +437,7 @@ export function BacktestGraph({
         .map((action, eventIndex) => {
           const visual = getActionVisual(action)
           const isPast = action.index <= simIndex
-          const labelText = `${action.condition} ${visual.label}`
+          const labelText = getActionPointLabel(action)
           return {
             xAxis: action.index,
             name: labelText,
@@ -439,7 +458,7 @@ export function BacktestGraph({
               fontSize: 12,
               fontWeight: 900,
               formatter: labelText,
-              show: action.tone === 'full-sell' || action.tone === 'reentry-buy',
+              show: false,
               opacity: isPast ? 1 : 0.7,
               padding: [5, 7],
               position: 'insideEndTop' as const,
@@ -509,32 +528,37 @@ export function BacktestGraph({
           type: 'value',
           min: 0,
           max: maxProgress,
-          axisLine: { lineStyle: { color: '#e5e8eb' } },
-          axisTick: { show: false },
+          axisLine: { lineStyle: { color: chartAxisLineColor, width: 1 } },
+          axisTick: { show: false, lineStyle: { color: chartAxisLineColor, width: 1 } },
           axisLabel: {
-            color: '#8b95a1',
+            color: chartAxisLabelColor,
             fontSize: 11,
             formatter: (value: number) => renderPoints[Math.round(value)]?.time ?? '',
           },
+          splitLine: { lineStyle: { color: chartGridLineColor, width: 1 } },
         },
         yAxis: [
           {
             type: 'value',
             min: yMin,
             max: yMax,
+            axisLine: { lineStyle: { color: chartAxisLineColor, width: 1 } },
+            axisTick: { show: false, lineStyle: { color: chartAxisLineColor, width: 1 } },
             axisLabel: {
-              color: '#8b95a1',
+              color: chartAxisLabelColor,
               fontSize: 11,
               formatter: (value: number) => format.price(value),
             },
-            splitLine: { lineStyle: { color: '#eef0f3' } },
+            splitLine: { lineStyle: { color: chartGridLineColor, width: 1 } },
           },
           {
             type: 'value',
             min: -profitAbsMax * 1.2,
             max: profitAbsMax * 1.2,
+            axisLine: { lineStyle: { color: chartAxisLineColor, width: 1 } },
+            axisTick: { show: false, lineStyle: { color: chartAxisLineColor, width: 1 } },
             axisLabel: {
-              color: '#8b95a1',
+              color: chartAxisLabelColor,
               fontSize: 11,
               formatter: (value: number) => format.signedMoney(value),
             },
@@ -574,10 +598,19 @@ export function BacktestGraph({
             type: 'scatter',
             data: eventScatter,
             label: {
-              show: false,
+              show: true,
+              backgroundColor: '#ffffff',
+              borderRadius: 7,
+              borderWidth: 1,
               color: '#333d4b',
+              formatter: (params: unknown) => {
+                const data = (params as { data?: { labelText?: string } | null }).data
+                return data?.labelText ?? ''
+              },
               fontSize: 12,
               fontWeight: 800,
+              padding: [5, 7],
+              position: 'top',
             },
           },
         ],
