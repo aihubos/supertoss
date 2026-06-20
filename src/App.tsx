@@ -1434,6 +1434,21 @@ const createStrategyStage = (type: StrategyStage['type'], step: number, previous
   return { ...stage, label: getStrategyStageShortLabel(stage) }
 }
 
+const reindexStrategyStages = (stages: StrategyStage[]) =>
+  [...stages]
+    .sort((left, right) => getStrategyStageStep(left) - getStrategyStageStep(right))
+    .map((stage, index) => {
+      const nextStage = {
+        ...stage,
+        id: getStrategyStageId(stage.type, index + 1),
+      }
+
+      return {
+        ...nextStage,
+        label: getStrategyStageShortLabel(nextStage),
+      }
+    })
+
 const getSavedStockStrategyStages = (stock: SavedStock) =>
   normalizeStrategyStages(stock.strategyStages ?? getStrategyStagesForStock(stock))
 
@@ -2818,6 +2833,23 @@ function App() {
     })
   }
 
+  const deleteStrategyStage = (targetStage: StrategyStage) => {
+    setBacktestForm((current) => {
+      const stages = normalizeStrategyStages(current.stages)
+      const sameTypeStages = stages.filter((stage) => stage.type === targetStage.type)
+      if (sameTypeStages.length <= 1) return current
+
+      const otherStages = stages.filter((stage) => stage.type !== targetStage.type)
+      const remainingStages = reindexStrategyStages(
+        sameTypeStages.filter((stage) => stage.id !== targetStage.id),
+      )
+      const nextStages = normalizeStrategyStages([...otherStages, ...remainingStages])
+      syncCurrentStockStrategyStages(current.stockId, nextStages)
+
+      return { ...current, stages: nextStages }
+    })
+  }
+
   const updateStrategyLevelFromGraph = ({
     id,
     price,
@@ -3912,46 +3944,62 @@ function App() {
                             </button>
                           )}
                         </div>
-                        {groupStages.map((stage) => (
-                          <div
-                            className={`stage-editor-row ${stage.type} ${stage.enabled === false ? 'disabled' : ''}`}
-                            key={stage.id}
-                          >
-                            <strong>
-                              <span>{getStrategyStageShortLabel(stage)}</span>
-                              <small>{getStrategyStageTypeLabel(stage)}</small>
-                            </strong>
-                            <label className="stage-enabled-toggle">
-                              <span>사용</span>
-                              <input
-                                checked={stage.enabled !== false}
-                                onChange={(event) => updateStrategyStage(stage.id, 'enabled', event.target.checked)}
-                                type="checkbox"
-                              />
-                            </label>
-                            <label>
-                              <span>{getStrategyStageTriggerLabel(stage)}</span>
-                              <input
-                                onChange={(event) => updateStrategyStage(stage.id, 'trigger', Number(event.target.value))}
-                                type="number"
-                                value={stage.trigger}
-                              />
-                            </label>
-                            <label>
-                              <span>{getStrategyStageQuantityLabel(stage)}</span>
-                              <input
-                                disabled={stage.type === 'crash-full-sell' || stage.type === 'post-full-sell-reentry'}
-                                max="100"
-                                min="1"
-                                onChange={(event) =>
-                                  updateStrategyStage(stage.id, 'quantityPercent', Number(event.target.value))
-                                }
-                                type="number"
-                                value={stage.quantityPercent}
-                              />
-                            </label>
-                          </div>
-                        ))}
+                        {groupStages.map((stage) => {
+                          const canDeleteStage = groupStages.length > 1
+
+                          return (
+                            <div
+                              className={`stage-editor-row ${stage.type} ${stage.enabled === false ? 'disabled' : ''}`}
+                              key={stage.id}
+                            >
+                              <strong>
+                                <span>{getStrategyStageShortLabel(stage)}</span>
+                                <small>{getStrategyStageTypeLabel(stage)}</small>
+                              </strong>
+                              <label className="stage-enabled-toggle">
+                                <span>사용</span>
+                                <input
+                                  checked={stage.enabled !== false}
+                                  onChange={(event) => updateStrategyStage(stage.id, 'enabled', event.target.checked)}
+                                  type="checkbox"
+                                />
+                              </label>
+                              <label>
+                                <span>{getStrategyStageTriggerLabel(stage)}</span>
+                                <input
+                                  onChange={(event) =>
+                                    updateStrategyStage(stage.id, 'trigger', Number(event.target.value))
+                                  }
+                                  type="number"
+                                  value={stage.trigger}
+                                />
+                              </label>
+                              <label>
+                                <span>{getStrategyStageQuantityLabel(stage)}</span>
+                                <input
+                                  disabled={stage.type === 'crash-full-sell' || stage.type === 'post-full-sell-reentry'}
+                                  max="100"
+                                  min="1"
+                                  onChange={(event) =>
+                                    updateStrategyStage(stage.id, 'quantityPercent', Number(event.target.value))
+                                  }
+                                  type="number"
+                                  value={stage.quantityPercent}
+                                />
+                              </label>
+                              <button
+                                aria-label={`${getStrategyStageShortLabel(stage)} 삭제`}
+                                className="stage-delete-button"
+                                disabled={!canDeleteStage}
+                                onClick={() => deleteStrategyStage(stage)}
+                                title={canDeleteStage ? '단계 삭제' : '최소 1단계는 유지됩니다'}
+                                type="button"
+                              >
+                                X
+                              </button>
+                            </div>
+                          )
+                        })}
                       </div>
                     )
                   })}

@@ -112,6 +112,13 @@ const mergeFormatter = (formatter?: BacktestGraphFormatter): Required<BacktestGr
   ...formatter,
 })
 
+const formatAxisPercent = (value: number) => {
+  if (!Number.isFinite(value)) return ''
+  const normalizedValue = Math.abs(value) < 0.05 ? 0 : value
+  const fixedValue = normalizedValue.toFixed(Math.abs(normalizedValue) >= 10 ? 1 : 2)
+  return `${fixedValue.replace(/\.0+$|(\.\d*[1-9])0+$/, '$1')}%`
+}
+
 const interpolateNumber = (start: number, end: number, ratio: number) => start + (end - start) * ratio
 
 const normalizePoints = (points: BacktestGraphPoint[]): RenderPoint[] =>
@@ -490,12 +497,16 @@ export function BacktestGraph({
 
       const priceValues = renderPoints.map((point) => point.price)
       const levelPriceValues = strategyLevels.map((level) => level.price)
-      const profitValues = renderPoints.map((point) => point.profit)
+      const profitRateValues = renderPoints.map((point) => point.profitRate)
       const priceMin = Math.min(...priceValues, ...levelPriceValues)
       const priceMax = Math.max(...priceValues, ...levelPriceValues)
       const yMin = priceMin === priceMax ? priceMin * 0.98 : priceMin * 0.985
       const yMax = priceMin === priceMax ? priceMax * 1.02 : priceMax * 1.015
-      const profitAbsMax = Math.max(...profitValues.map((value) => Math.abs(value)), 1)
+      const profitRateMin = Math.min(...profitRateValues, 0)
+      const profitRateMax = Math.max(...profitRateValues, 0)
+      const profitRatePadding = Math.max((profitRateMax - profitRateMin) * 0.16, 0.8)
+      const yProfitRateMin = profitRateMin === profitRateMax ? profitRateMin - 1 : profitRateMin - profitRatePadding
+      const yProfitRateMax = profitRateMin === profitRateMax ? profitRateMax + 1 : profitRateMax + profitRatePadding
       const eventScatter = visibleActions.filter(isTradeAction).map((action) => {
         const visual = getActionVisual(action)
         return {
@@ -636,14 +647,16 @@ export function BacktestGraph({
           },
           {
             type: 'value',
-            min: -profitAbsMax * 1.2,
-            max: profitAbsMax * 1.2,
+            name: '수익률',
+            nameTextStyle: { color: chartAxisLabelColor, fontSize: 11, fontWeight: 800 },
+            min: yProfitRateMin,
+            max: yProfitRateMax,
             axisLine: { lineStyle: { color: chartAxisLineColor, width: 1 } },
             axisTick: { show: false, lineStyle: { color: chartAxisLineColor, width: 1 } },
             axisLabel: {
               color: chartAxisLabelColor,
               fontSize: 11,
-              formatter: (value: number) => format.signedMoney(value),
+              formatter: (value: number) => formatAxisPercent(value),
             },
             splitLine: { show: false },
           },
@@ -667,12 +680,12 @@ export function BacktestGraph({
             },
           },
           {
-            name: 'Profit',
+            name: 'Return %',
             type: 'line',
             smooth: true,
             yAxisIndex: 1,
             symbol: 'none',
-            data: visiblePoints.map((point) => [point.renderIndex, point.profit]),
+            data: visiblePoints.map((point) => [point.renderIndex, point.profitRate]),
             lineStyle: { width: 3, color: '#f04452', type: 'dashed' },
             areaStyle: { color: 'rgba(240, 68, 82, 0.06)' },
           },

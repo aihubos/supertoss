@@ -2402,9 +2402,9 @@ button {
 .stage-editor-head,
 .stage-editor-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(58px, 66px) minmax(82px, 96px) minmax(82px, 96px);
+  grid-template-columns: minmax(108px, 1fr) 44px minmax(62px, 78px) minmax(62px, 78px) 28px;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -2419,6 +2419,7 @@ button {
 }
 
 .stage-editor-head strong {
+  grid-column: 2 / -1;
   color: #8b95a1;
   font-size: 12px;
   font-weight: 850;
@@ -2457,7 +2458,7 @@ button {
 }
 
 .stage-editor-row {
-  padding: 10px;
+  padding: 8px;
   border-radius: 13px;
   background: #ffffff;
 }
@@ -2523,7 +2524,7 @@ button {
 
 .stage-editor-row input {
   min-height: 38px;
-  padding: 0 10px;
+  padding: 0 7px;
   border-radius: 11px;
   background: #f7f8fa;
 }
@@ -2531,6 +2532,38 @@ button {
 .stage-editor-row input:disabled {
   color: #8b95a1;
   cursor: not-allowed;
+}
+
+.stage-delete-button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  justify-self: end;
+  border-radius: 9px;
+  background: transparent;
+  color: #b0b8c1;
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1;
+  transition: background-color 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+
+.stage-delete-button:hover,
+.stage-delete-button:focus-visible {
+  background: #fff0f0;
+  color: #f04452;
+  outline: none;
+}
+
+.stage-delete-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.32;
+}
+
+.stage-delete-button:disabled:hover {
+  background: transparent;
+  color: #b0b8c1;
 }
 
 .stage-enabled-toggle {
@@ -3359,7 +3392,7 @@ button {
 
   .stage-editor-head,
   .stage-editor-row {
-    grid-template-columns: minmax(150px, 1fr) minmax(58px, 66px) minmax(82px, 96px) minmax(82px, 96px);
+    grid-template-columns: minmax(108px, 1fr) 44px minmax(62px, 78px) minmax(62px, 78px) 28px;
   }
 
   .stock-detail-layout {
@@ -3700,6 +3733,14 @@ button {
   .stage-editor-head,
   .stage-editor-row {
     grid-template-columns: 1fr;
+  }
+
+  .stage-editor-head strong {
+    grid-column: auto;
+  }
+
+  .stage-delete-button {
+    justify-self: start;
   }
 
   .backtest-event {
