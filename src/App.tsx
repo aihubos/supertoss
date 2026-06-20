@@ -2776,6 +2776,10 @@ function App() {
     setSelectedDetailStock(null)
   }
 
+  const toggleDisplayCurrency = () => {
+    setDisplayCurrency((current) => (current === 'krw' ? 'usd' : 'krw'))
+  }
+
   useEffect(() => {
     const syncSectionFromHash = () => {
       const [hashSection] = getHashParts()
@@ -2978,17 +2982,14 @@ function App() {
             ))}
           </div>
           <div className="topbar-actions">
-            <div className="currency-toggle" role="group" aria-label="금액 표시 통화 선택">
-              {(['krw', 'usd'] as DisplayCurrency[]).map((currency) => (
-                <button
-                  className={displayCurrency === currency ? 'active' : ''}
-                  key={currency}
-                  onClick={() => setDisplayCurrency(currency)}
-                  type="button"
-                >
-                  {currency === 'krw' ? '원화' : '달러'}
-                </button>
-              ))}
+            <div className={`currency-toggle ${displayCurrency}`} aria-label="금액 표시 통화">
+              <button
+                aria-pressed={displayCurrency === 'usd'}
+                onClick={toggleDisplayCurrency}
+                type="button"
+              >
+                <span>{displayCurrency === 'krw' ? '원화' : '달러'}</span>
+              </button>
               <small>기준 1달러 {usdKrwRate.toLocaleString('ko-KR')}원</small>
             </div>
             <div className="market-toggle" role="group" aria-label="시장 모드 선택">

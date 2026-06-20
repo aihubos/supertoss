@@ -943,28 +943,34 @@ button {
 
 .currency-toggle {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 5px;
   min-width: 0;
-  padding: 4px;
+  padding: 5px;
   border: 1px solid #e5e8eb;
   border-radius: 12px;
   background: #f7f8fa;
 }
 
 .currency-toggle button {
-  min-height: 34px;
+  display: grid;
+  min-height: 36px;
+  place-items: center;
   border-radius: 9px;
-  background: transparent;
-  color: #6b7684;
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.currency-toggle button.active {
   background: #ffffff;
   color: #0b6bff;
+  font-size: 13px;
+  font-weight: 900;
   box-shadow: 0 8px 18px rgba(17, 24, 39, 0.06);
+}
+
+.currency-toggle.usd button {
+  color: #111827;
+}
+
+.currency-toggle button span {
+  min-width: 42px;
+  text-align: center;
 }
 
 .currency-toggle small {
