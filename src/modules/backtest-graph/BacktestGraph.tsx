@@ -36,6 +36,7 @@ const speedOptions: BacktestGraphSpeed[] = [1, 2, 5, 10]
 const chartAxisLineColor = 'rgba(107, 118, 132, 0.18)'
 const chartGridLineColor = 'rgba(107, 118, 132, 0.1)'
 const chartAxisLabelColor = '#9aa4b2'
+const exportBackgroundColor = '#ffffff'
 
 const videoDownloadFormats: VideoDownloadFormat[] = [
   { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', extension: 'mp4' },
@@ -165,7 +166,7 @@ const getActionVisual = (action: BacktestGraphAction) => {
     return { color: '#0891b2', label: '재매수', lineType: 'solid' as const, symbol: 'diamond', width: 2.4 }
   }
   if (action.action.includes('하락매도')) {
-    return { color: '#d9480f', label: '매도', lineType: 'dashed' as const, symbol: 'circle', width: 1.7 }
+    return { color: '#1d4ed8', label: '매도', lineType: 'dashed' as const, symbol: 'circle', width: 1.7 }
   }
   if (action.action.includes('급락')) {
     return { color: '#7c3aed', label: '전량매도', lineType: 'solid' as const, symbol: 'diamond', width: 2.8 }
@@ -188,8 +189,11 @@ const getStrategyLevelVisual = (level: BacktestGraphStrategyLevel) => {
   if (level.tone === 'reentry-buy' || level.group === '재진입 전량매수') {
     return { color: '#0891b2', label: '재매수', lineType: 'solid' as const }
   }
+  if (level.group === '급락 매수') {
+    return { color: '#0f766e', label: '급락매수', lineType: 'dashed' as const }
+  }
   if (level.group === '하락 매도') {
-    return { color: '#d9480f', label: '하락매도', lineType: 'dashed' as const }
+    return { color: '#1d4ed8', label: '하락매도', lineType: 'dashed' as const }
   }
   if (level.group === '급락 전량매도') {
     return { color: '#7c3aed', label: '급락매도', lineType: 'solid' as const }
@@ -225,6 +229,37 @@ const getActionPointLabel = (action: BacktestGraphAction) => {
   const quantity = formatActionQuantity(action.quantity)
 
   return quantity ? `${visual.label} ${quantity}` : visual.label
+}
+
+const getStrategyLevelStep = (level: BacktestGraphStrategyLevel) => {
+  const target = `${level.id ?? ''} ${level.shortLabel ?? ''} ${level.label}`
+  const stepMatch = target.match(/(?:^|\D)([123])(?:차|\b|-)/)
+
+  return stepMatch ? Number(stepMatch[1]) : 0
+}
+
+const getStrategyLevelLineWeight = (level: BacktestGraphStrategyLevel) => {
+  const step = getStrategyLevelStep(level)
+  const opacityByStep = [0.42, 0.24, 0.36, 0.52]
+  const widthByStep = [1.1, 0.85, 1, 1.18]
+
+  if (level.tone === 'full-sell' || level.tone === 'full-buy' || level.tone === 'reentry-buy') {
+    return { opacity: 0.48, width: 1.22 }
+  }
+
+  return {
+    opacity: opacityByStep[step] ?? opacityByStep[0],
+    width: widthByStep[step] ?? widthByStep[0],
+  }
+}
+
+const getStrategyLevelChartLabel = (level: BacktestGraphStrategyLevel, fallbackLabel: string) => {
+  if (level.group === '급락 매수') return '급락매수'
+  if (level.group === '급락 전량매도') return '급락매도'
+  if (level.group === '재진입 전량매수') return '재매수'
+
+  const step = getStrategyLevelStep(level)
+  return step > 0 ? `${step}차` : fallbackLabel
 }
 
 const isTradeAction = (action: BacktestGraphAction) =>
@@ -265,6 +300,40 @@ const getSupportedVideoDownloadFormat = (): VideoDownloadFormat => {
   return supportedFormat ?? { extension: 'webm' }
 }
 
+const createWhiteBackgroundVideoStream = (sourceCanvas: HTMLCanvasElement) => {
+  const exportCanvas = document.createElement('canvas')
+  const context = exportCanvas.getContext('2d', { alpha: false })
+
+  if (!context || typeof exportCanvas.captureStream !== 'function') return null
+
+  let animationFrame = 0
+  let stopped = false
+
+  const paintFrame = () => {
+    if (stopped) return
+
+    if (exportCanvas.width !== sourceCanvas.width || exportCanvas.height !== sourceCanvas.height) {
+      exportCanvas.width = sourceCanvas.width
+      exportCanvas.height = sourceCanvas.height
+    }
+
+    context.fillStyle = exportBackgroundColor
+    context.fillRect(0, 0, exportCanvas.width, exportCanvas.height)
+    context.drawImage(sourceCanvas, 0, 0)
+    animationFrame = window.requestAnimationFrame(paintFrame)
+  }
+
+  paintFrame()
+
+  return {
+    stream: exportCanvas.captureStream(30),
+    stop: () => {
+      stopped = true
+      if (animationFrame) window.cancelAnimationFrame(animationFrame)
+    },
+  }
+}
+
 export function BacktestGraph({
   points,
   actions,
@@ -284,6 +353,7 @@ export function BacktestGraph({
   const lastFrameRef = useRef<number | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordedStreamRef = useRef<MediaStream | null>(null)
+  const videoCaptureCleanupRef = useRef<(() => void) | null>(null)
   const [mode, setMode] = useState<'simulation' | 'result'>(initialMode)
   const [isPlaying, setIsPlaying] = useState(false)
   const [speed, setSpeed] = useState<BacktestGraphSpeed>(initialSpeed)
@@ -360,6 +430,8 @@ export function BacktestGraph({
       if (mediaRecorderRef.current?.state === 'recording') {
         mediaRecorderRef.current.stop()
       }
+      videoCaptureCleanupRef.current?.()
+      videoCaptureCleanupRef.current = null
       recordedStreamRef.current?.getTracks().forEach((track) => track.stop())
       chartInstanceRef.current?.dispose()
       chartInstanceRef.current = null
@@ -469,9 +541,11 @@ export function BacktestGraph({
         })
       const strategyMarkLines = strategyLevels.map((level) => {
         const visual = getStrategyLevelVisual(level)
+        const lineWeight = getStrategyLevelLineWeight(level)
         const triggerText =
           typeof level.trigger === 'number' ? ` ${level.trigger > 0 ? '+' : ''}${level.trigger}%` : ''
         const shortLabel = level.shortLabel ?? visual.label
+        const chartLabel = getStrategyLevelChartLabel(level, shortLabel)
         const labelText = `${shortLabel}${triggerText} · ${format.price(level.price)}`
 
         return {
@@ -479,9 +553,9 @@ export function BacktestGraph({
           name: labelText,
           lineStyle: {
             color: visual.color,
-            opacity: 0.76,
+            opacity: lineWeight.opacity,
             type: visual.lineType,
-            width: level.tone === 'full-buy' || level.tone === 'full-sell' ? 2.4 : 1.9,
+            width: lineWeight.width,
           },
           label: {
             backgroundColor: '#ffffff',
@@ -491,16 +565,18 @@ export function BacktestGraph({
             color: visual.color,
             fontSize: 11,
             fontWeight: 900,
-            formatter: shortLabel,
+            formatter: chartLabel,
+            opacity: Math.min(0.92, lineWeight.opacity + 0.32),
             padding: [4, 6],
             position: 'end' as const,
-            show: Boolean(shortLabel),
+            show: Boolean(chartLabel),
           },
         }
       })
       const option: EChartsOption = {
         animation: true,
         animationDuration: 260,
+        backgroundColor: exportBackgroundColor,
         title: {
           top: 0,
           left: 8,
@@ -669,7 +745,7 @@ export function BacktestGraph({
     await waitForChartPaint()
 
     const dataUrl = chartInstanceRef.current?.getDataURL({
-      backgroundColor: '#ffffff',
+      backgroundColor: exportBackgroundColor,
       pixelRatio: 2,
       type: 'png',
     })
@@ -692,16 +768,24 @@ export function BacktestGraph({
     setProgress(0)
     await waitForChartPaint()
 
-    const stream = canvas.captureStream(30)
-    recordedStreamRef.current = stream
+    const videoCapture = createWhiteBackgroundVideoStream(canvas)
+    if (!videoCapture) return
+
+    recordedStreamRef.current = videoCapture.stream
+    videoCaptureCleanupRef.current = videoCapture.stop
     const videoFormat = getSupportedVideoDownloadFormat()
-    const recorder = new MediaRecorder(stream, videoFormat.mimeType ? { mimeType: videoFormat.mimeType } : undefined)
+    const recorder = new MediaRecorder(
+      videoCapture.stream,
+      videoFormat.mimeType ? { mimeType: videoFormat.mimeType } : undefined,
+    )
     const chunks: BlobPart[] = []
 
     recorder.addEventListener('dataavailable', (event) => {
       if (event.data.size > 0) chunks.push(event.data)
     })
     recorder.addEventListener('stop', () => {
+      videoCaptureCleanupRef.current?.()
+      videoCaptureCleanupRef.current = null
       recordedStreamRef.current?.getTracks().forEach((track) => track.stop())
       recordedStreamRef.current = null
       mediaRecorderRef.current = null

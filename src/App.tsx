@@ -1329,7 +1329,7 @@ const getStrategyStageTone = (stage: StrategyStage): BacktestStrategyLevel['tone
 
 const getStrategyStageGroup = (stage: StrategyStage) => {
   if (stage.type === 'rise-sell') return '상승 매도'
-  if (stage.type === 'dip-buy') return '하락 매수'
+  if (stage.type === 'dip-buy') return stage.id === 'dip-buy-3' ? '급락 매수' : '하락 매수'
   if (stage.type === 'dip-sell') return '하락 매도'
   if (stage.type === 'post-full-sell-reentry') return '재진입 전량매수'
   return '급락 전량매도'
@@ -1364,7 +1364,7 @@ const getStrategyStageStep = (stage: StrategyStage) => {
 const getStrategyStageShortLabel = (stage: StrategyStage) => {
   const step = getStrategyStageStep(stage)
   if (stage.type === 'rise-sell') return `${step || 1}차 매도`
-  if (stage.type === 'dip-buy') return `${step || 1}차 매수`
+  if (stage.type === 'dip-buy') return stage.id === 'dip-buy-3' ? '급락매수' : `${step || 1}차 매수`
   if (stage.type === 'dip-sell') return `${step || 1}차 하락매도`
   if (stage.type === 'post-full-sell-reentry') return '재매수'
   return '급락매도'
