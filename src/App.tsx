@@ -71,9 +71,14 @@ type MarketSessionInfo = {
   actionLabel: string
   countdown: string
   phaseLabel: string
-  sessionTimes: string
+  sessionTimes: MarketSessionTime[]
   timeLabel: string
   nextOpenLabel: string
+}
+
+type MarketSessionTime = {
+  label: string
+  time: string
 }
 
 type Recommendation = {
@@ -998,9 +1003,9 @@ const getMarketPhaseLabel = (now: Date, config: MarketSessionConfig) => {
   if (!isTradingWeekday(zoned.year, zoned.month, zoned.day, config.timeZone)) return '휴장'
 
   if (config.id === 'us') {
-    if (totalMinutes >= 4 * 60 && totalMinutes < 9 * 60 + 30) return '프리장'
+    if (totalMinutes >= 4 * 60 && totalMinutes < 9 * 60 + 30) return '프리마켓'
     if (totalMinutes >= 9 * 60 + 30 && totalMinutes <= 16 * 60) return '정규장'
-    if (totalMinutes > 16 * 60 && totalMinutes <= 20 * 60) return '애프터장'
+    if (totalMinutes > 16 * 60 && totalMinutes <= 20 * 60) return '애프터마켓'
     return '대기'
   }
 
@@ -1009,10 +1014,49 @@ const getMarketPhaseLabel = (now: Date, config: MarketSessionConfig) => {
   return '대기'
 }
 
-const getMarketSessionTimes = (config: MarketSessionConfig) =>
-  config.id === 'us'
-    ? '프리장 04:00-09:30 ET · 정규장 09:30-16:00 ET · 애프터장 16:00-20:00 ET'
-    : '정규장 09:00-15:30 KST · 시간외 15:40-18:00 KST'
+const formatKstSessionTime = (start: Date, end: Date) => {
+  const startKst = getZonedParts(start, 'Asia/Seoul')
+  const endKst = getZonedParts(end, 'Asia/Seoul')
+  const startDay = Date.UTC(startKst.year, startKst.month - 1, startKst.day)
+  const endDay = Date.UTC(endKst.year, endKst.month - 1, endKst.day)
+  const endDayOffset = Math.round((endDay - startDay) / 86400000)
+  const endOffsetLabel = endDayOffset > 0 ? `+${endDayOffset}` : endDayOffset < 0 ? `${endDayOffset}` : ''
+
+  return `${padTimeUnit(startKst.hour)}:${padTimeUnit(startKst.minute)}-${padTimeUnit(endKst.hour)}:${padTimeUnit(
+    endKst.minute,
+  )}${endOffsetLabel} KST`
+}
+
+const getMarketSessionTimes = (config: MarketSessionConfig, now: Date) => {
+  if (config.id === 'kr') {
+    return [
+      { label: '동시호가', time: '08:30-09:00 KST' },
+      { label: '정규장', time: '09:00-15:30 KST' },
+      { label: '시간외', time: '15:40-18:00 KST' },
+    ]
+  }
+
+  const zoned = getZonedParts(now, config.timeZone)
+  const makeUsSessionTime = (
+    label: string,
+    startHour: number,
+    startMinute: number,
+    endHour: number,
+    endMinute: number,
+  ) => ({
+    label,
+    time: formatKstSessionTime(
+      getDateInTimeZone(zoned.year, zoned.month, zoned.day, startHour, startMinute, config.timeZone),
+      getDateInTimeZone(zoned.year, zoned.month, zoned.day, endHour, endMinute, config.timeZone),
+    ),
+  })
+
+  return [
+    makeUsSessionTime('프리마켓', 4, 0, 9, 30),
+    makeUsSessionTime('정규장', 9, 30, 16, 0),
+    makeUsSessionTime('애프터마켓', 16, 0, 20, 0),
+  ]
+}
 
 const getMarketSessionInfo = (now: Date, config: MarketSessionConfig): MarketSessionInfo => {
   const zoned = getZonedParts(now, config.timeZone)
@@ -1033,11 +1077,10 @@ const getMarketSessionInfo = (now: Date, config: MarketSessionConfig): MarketSes
     config.timeZone,
   )
   const isTodayTradingDay = isTradingWeekday(zoned.year, zoned.month, zoned.day, config.timeZone)
-  const openTimeLabel = `${padTimeUnit(config.openHour)}:${padTimeUnit(config.openMinute)}`
-  const closeTimeLabel = `${padTimeUnit(config.closeHour)}:${padTimeUnit(config.closeMinute)}`
-  const timeLabel = `${config.marketLabel ? `${config.marketLabel} · ` : ''}${openTimeLabel}-${closeTimeLabel}`
+  const regularTimeLabel = `정규 ${formatKstSessionTime(todayOpen, todayClose)}`
+  const timeLabel = `${config.marketLabel ? `${config.marketLabel} · ` : ''}${regularTimeLabel}`
   const phaseLabel = getMarketPhaseLabel(now, config)
-  const sessionTimes = getMarketSessionTimes(config)
+  const sessionTimes = getMarketSessionTimes(config, now)
 
   if (isTodayTradingDay && now >= todayOpen && now <= todayClose) {
     const nextTradingDate = getNextTradingDate(zoned.year, zoned.month, zoned.day + 1, config.timeZone)
@@ -2807,6 +2850,10 @@ function App() {
     setSelectedDetailStock(null)
   }
 
+  const toggleMarketMode = () => {
+    handleMarketModeChange(marketMode === 'kr' ? 'us' : 'kr')
+  }
+
   const toggleDisplayCurrency = () => {
     setDisplayCurrency((current) => (current === 'krw' ? 'usd' : 'krw'))
   }
@@ -3011,7 +3058,14 @@ function App() {
                   {session.countdown}
                 </time>
                 <small className="market-countdown-schedule">{session.timeLabel}</small>
-                <small className="market-session-hours">{session.sessionTimes}</small>
+                <div className="market-session-hours" aria-label={`${session.label} 세션 시간`}>
+                  {session.sessionTimes.map((item) => (
+                    <span className={session.phaseLabel === item.label ? 'active' : ''} key={item.label}>
+                      <b>{item.label}</b>
+                      <em>{item.time}</em>
+                    </span>
+                  ))}
+                </div>
                 <small className="market-countdown-next">{session.nextOpenLabel}</small>
               </article>
             ))}
@@ -3036,22 +3090,20 @@ function App() {
                 <em>달러</em>
               </span>
             </button>
-            <div className="market-toggle" role="group" aria-label="시장 모드 선택">
+            <button
+              aria-label={`시장 모드: ${marketPresets[marketMode].shortLabel}`}
+              aria-pressed={marketMode === 'us'}
+              className={`market-toggle ${marketMode}`}
+              onClick={toggleMarketMode}
+              type="button"
+            >
               {(['kr', 'us'] as MarketMode[]).map((mode) => (
-                <button
-                  aria-pressed={marketMode === mode}
-                  className={marketMode === mode ? 'active' : ''}
-                  key={mode}
-                  onClick={() => handleMarketModeChange(mode)}
-                  type="button"
-                >
-                  <span className="market-toggle-flag" aria-hidden="true">
-                    {marketPresets[mode].flagIcon}
-                  </span>
-                  <span className="market-toggle-label">{marketPresets[mode].shortLabel}</span>
-                </button>
+                <span className={marketMode === mode ? 'active' : ''} key={mode}>
+                  <b aria-hidden="true">{marketPresets[mode].flagIcon}</b>
+                  <em>{marketPresets[mode].shortLabel}</em>
+                </span>
               ))}
-            </div>
+            </button>
             <div className="signal-board" aria-label="운용 상태등">
               <button
                 className={`paper-operation-button ${paperMode ? 'on' : 'off'}`}
