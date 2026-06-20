@@ -943,45 +943,33 @@ button {
 
 .currency-toggle {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px;
   min-width: 0;
-  padding: 5px;
-  border: 1px solid #e5e8eb;
+  padding: 4px;
+  border: 1px solid #d8dee6;
   border-radius: 12px;
-  background: #f7f8fa;
+  background: #ffffff;
+  color: #6b7684;
 }
 
-.currency-toggle button {
+.currency-toggle span {
   display: grid;
-  min-height: 36px;
+  min-height: 34px;
   place-items: center;
   border-radius: 9px;
-  background: #ffffff;
-  color: #0b6bff;
+  background: transparent;
   font-size: 13px;
-  font-weight: 900;
-  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.06);
-}
-
-.currency-toggle.usd button {
-  color: #111827;
-}
-
-.currency-toggle button span {
-  min-width: 42px;
-  text-align: center;
-}
-
-.currency-toggle small {
-  grid-column: 1 / -1;
-  overflow: hidden;
-  color: #8b95a1;
-  font-size: 10px;
   font-weight: 850;
+  line-height: 1;
   text-align: center;
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.currency-toggle span.active {
+  background: #0b6bff;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(11, 107, 255, 0.18);
 }
 
 .market-countdown-panel {
@@ -3978,7 +3966,7 @@ button {
 
 .topbar-actions {
   grid-column: 1 / -1;
-  grid-template-columns: minmax(130px, 0.72fr) minmax(150px, 0.86fr) minmax(210px, 1fr) repeat(4, minmax(0, 0.55fr));
+  grid-template-columns: repeat(2, minmax(150px, 0.86fr)) minmax(210px, 1fr) repeat(4, minmax(0, 0.55fr));
   align-items: center;
   align-content: stretch;
   gap: 7px;

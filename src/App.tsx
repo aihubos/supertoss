@@ -2982,16 +2982,19 @@ function App() {
             ))}
           </div>
           <div className="topbar-actions">
-            <div className={`currency-toggle ${displayCurrency}`} aria-label="금액 표시 통화">
-              <button
-                aria-pressed={displayCurrency === 'usd'}
-                onClick={toggleDisplayCurrency}
-                type="button"
-              >
-                <span>{displayCurrency === 'krw' ? '원화' : '달러'}</span>
-              </button>
-              <small>기준 1달러 {usdKrwRate.toLocaleString('ko-KR')}원</small>
-            </div>
+            <button
+              aria-label={`금액 표시 통화: ${
+                displayCurrency === 'krw' ? '원화' : '달러'
+              }. 기준 1달러 ${usdKrwRate.toLocaleString('ko-KR')}원`}
+              aria-pressed={displayCurrency === 'usd'}
+              className={`currency-toggle ${displayCurrency}`}
+              onClick={toggleDisplayCurrency}
+              title={`기준 1달러 ${usdKrwRate.toLocaleString('ko-KR')}원`}
+              type="button"
+            >
+              <span className={displayCurrency === 'krw' ? 'active' : ''}>원화</span>
+              <span className={displayCurrency === 'usd' ? 'active' : ''}>달러</span>
+            </button>
             <div className="market-toggle" role="group" aria-label="시장 모드 선택">
               {(['kr', 'us'] as MarketMode[]).map((mode) => (
                 <button
