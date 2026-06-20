@@ -221,9 +221,12 @@ type BacktestResult = {
 type BacktestStrategyLevel = {
   id: string
   label: string
+  shortLabel: string
   price: number
+  referencePrice: number
   trigger: number
   quantityPercent: number
+  canEditQuantity: boolean
   tone: 'buy' | 'sell' | 'full-buy' | 'full-sell' | 'reentry-buy'
   group: string
 }
@@ -1279,6 +1282,23 @@ const getStrategyStageTypeLabel = (stage: StrategyStage) => {
   return '급락 전량매도'
 }
 
+const getStrategyStageStep = (stage: StrategyStage) => {
+  const match = stage.id.match(/-(\d+)$/)
+  return match ? Number(match[1]) : 0
+}
+
+const getStrategyStageShortLabel = (stage: StrategyStage) => {
+  const step = getStrategyStageStep(stage)
+  if (stage.type === 'rise-sell') return `${step || 1}차 매도`
+  if (stage.type === 'dip-buy') return `${step || 1}차 매수`
+  if (stage.type === 'dip-sell') return `${step || 1}차 하락매도`
+  if (stage.type === 'post-full-sell-reentry') return '재매수'
+  return '급락매도'
+}
+
+const canEditStrategyStageQuantity = (stage: StrategyStage) =>
+  stage.type !== 'crash-full-sell' && stage.type !== 'post-full-sell-reentry'
+
 const getStrategyStageTriggerLabel = (stage: StrategyStage) =>
   stage.type === 'rise-sell'
     ? '상승률 %'
@@ -1636,9 +1656,12 @@ const buildBacktestResult = (
   const strategyLevels: BacktestStrategyLevel[] = regularStages.map((stage) => ({
       id: stage.id,
       label: stage.label,
+      shortLabel: getStrategyStageShortLabel(stage),
       price: form.startPrice * (1 + stage.trigger / 100),
+      referencePrice: form.startPrice,
       trigger: stage.trigger,
       quantityPercent: stage.quantityPercent,
+      canEditQuantity: canEditStrategyStageQuantity(stage),
       tone: getStrategyStageTone(stage),
       group: getStrategyStageGroup(stage),
     }))
@@ -1774,9 +1797,12 @@ const buildBacktestResult = (
           strategyLevels.push({
             id: reentryStage.id,
             label: reentryStage.label,
+            shortLabel: getStrategyStageShortLabel(reentryStage),
             price: price * (1 + reentryStage.trigger / 100),
+            referencePrice: price,
             trigger: reentryStage.trigger,
             quantityPercent: reentryStage.quantityPercent,
+            canEditQuantity: canEditStrategyStageQuantity(reentryStage),
             tone: getStrategyStageTone(reentryStage),
             group: getStrategyStageGroup(reentryStage),
           })
@@ -1872,6 +1898,15 @@ const buildBacktestResult = (
     dataWarning: historicalPath?.warning,
   }
 }
+
+const buildHistoricalPathFromBacktestResult = (result: BacktestResult): HistoricalPricePath => ({
+  points: result.simulationPoints.map((point) => ({
+    time: point.time,
+    price: point.price,
+  })),
+  source: result.dataSource,
+  warning: result.dataWarning,
+})
 
 const parsePercent = (value: string) => Number(value.replace(/[^\d.-]/g, ''))
 
@@ -2618,6 +2653,50 @@ function App() {
       ...current,
       stages: normalizeStrategyStages(current.stages).map((stage) => (stage.id === id ? { ...stage, [field]: value } : stage)),
     }))
+  }
+
+  const updateStrategyLevelFromGraph = ({
+    id,
+    price,
+    referencePrice,
+    quantityPercent,
+  }: {
+    id: string
+    price?: number
+    referencePrice?: number
+    quantityPercent?: number
+  }) => {
+    const nextForm: BacktestForm = {
+      ...backtestForm,
+      stages: normalizeStrategyStages(backtestForm.stages).map((stage) => {
+        if (stage.id !== id) return stage
+
+        const nextStage = { ...stage }
+        if (typeof price === 'number' && Number.isFinite(price) && price > 0) {
+          const basePrice = referencePrice && referencePrice > 0 ? referencePrice : backtestForm.startPrice
+          nextStage.trigger = Number((((price / basePrice) - 1) * 100).toFixed(2))
+        }
+        if (
+          typeof quantityPercent === 'number' &&
+          Number.isFinite(quantityPercent) &&
+          canEditStrategyStageQuantity(stage)
+        ) {
+          nextStage.quantityPercent = Math.max(1, Math.min(100, Math.round(quantityPercent)))
+        }
+
+        return nextStage
+      }),
+    }
+
+    setBacktestForm(nextForm)
+    setBacktestResult(
+      buildBacktestResult(
+        currentBacktestStock,
+        nextForm,
+        nextForm.date,
+        buildHistoricalPathFromBacktestResult(backtestResult),
+      ),
+    )
   }
 
   const moveNavItemTo = (sourceSection: NavSection, targetSection: NavSection, placement: 'before' | 'after') => {
@@ -3784,6 +3863,7 @@ function App() {
                 tablePrice: '가격',
                 tableProfitRate: '수익률',
               }}
+              onStrategyLevelChange={updateStrategyLevelFromGraph}
               points={backtestResult.simulationPoints}
               strategyLevels={backtestResult.strategyLevels}
               summary={{

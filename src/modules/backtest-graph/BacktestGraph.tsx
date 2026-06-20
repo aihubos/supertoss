@@ -158,13 +158,13 @@ const getToneClass = (action: BacktestGraphAction) => action.tone ?? 'neutral'
 
 const getActionVisual = (action: BacktestGraphAction) => {
   if (action.tone === 'reentry-buy') {
-    return { color: '#0891b2', label: '재진입 전량매수', lineType: 'solid' as const, symbol: 'diamond', width: 2.4 }
+    return { color: '#0891b2', label: '재매수', lineType: 'solid' as const, symbol: 'diamond', width: 2.4 }
   }
   if (action.action.includes('하락매도')) {
     return { color: '#d9480f', label: '하락매도', lineType: 'dashed' as const, symbol: 'circle', width: 1.7 }
   }
   if (action.action.includes('급락')) {
-    return { color: '#7c3aed', label: '급락 전량매도', lineType: 'solid' as const, symbol: 'diamond', width: 2.8 }
+    return { color: '#7c3aed', label: '급락매도', lineType: 'solid' as const, symbol: 'diamond', width: 2.8 }
   }
   switch (action.tone) {
     case 'buy':
@@ -182,19 +182,19 @@ const getActionVisual = (action: BacktestGraphAction) => {
 
 const getStrategyLevelVisual = (level: BacktestGraphStrategyLevel) => {
   if (level.tone === 'reentry-buy' || level.group === '재진입 전량매수') {
-    return { color: '#0891b2', label: '재진입 전량매수', lineType: 'solid' as const }
+    return { color: '#0891b2', label: '재매수', lineType: 'solid' as const }
   }
   if (level.group === '하락 매도') {
-    return { color: '#d9480f', label: '하락 매도', lineType: 'dashed' as const }
+    return { color: '#d9480f', label: '하락매도', lineType: 'dashed' as const }
   }
   if (level.group === '급락 전량매도') {
-    return { color: '#7c3aed', label: '급락 전량매도', lineType: 'solid' as const }
+    return { color: '#7c3aed', label: '급락매도', lineType: 'solid' as const }
   }
   if (level.group === '상승 매도') {
-    return { color: '#f04452', label: '상승 매도', lineType: 'dashed' as const }
+    return { color: '#f04452', label: '매도', lineType: 'dashed' as const }
   }
   if (level.group === '하락 매수') {
-    return { color: '#0b6bff', label: '하락 매수', lineType: 'dashed' as const }
+    return { color: '#0b6bff', label: '매수', lineType: 'dashed' as const }
   }
   switch (level.tone) {
     case 'sell':
@@ -257,6 +257,7 @@ export function BacktestGraph({
   initialMode = 'simulation',
   initialSpeed = 2,
   className,
+  onStrategyLevelChange,
 }: BacktestGraphProps) {
   const chartElRef = useRef<HTMLDivElement | null>(null)
   const chartInstanceRef = useRef<EChartsInstance | null>(null)
@@ -451,7 +452,8 @@ export function BacktestGraph({
         const visual = getStrategyLevelVisual(level)
         const triggerText =
           typeof level.trigger === 'number' ? ` ${level.trigger > 0 ? '+' : ''}${level.trigger}%` : ''
-        const labelText = `${level.label}${triggerText} · ${format.price(level.price)}`
+        const shortLabel = level.shortLabel ?? visual.label
+        const labelText = `${shortLabel}${triggerText} · ${format.price(level.price)}`
 
         return {
           yAxis: level.price,
@@ -463,7 +465,17 @@ export function BacktestGraph({
             width: level.tone === 'full-buy' || level.tone === 'full-sell' ? 2.4 : 1.9,
           },
           label: {
-            show: false,
+            backgroundColor: '#ffffff',
+            borderColor: visual.color,
+            borderRadius: 7,
+            borderWidth: 1,
+            color: visual.color,
+            fontSize: 11,
+            fontWeight: 900,
+            formatter: shortLabel,
+            padding: [4, 6],
+            position: 'end' as const,
+            show: Boolean(shortLabel),
           },
         }
       })
@@ -483,7 +495,7 @@ export function BacktestGraph({
           itemHeight: 12,
           textStyle: { color: '#333d4b', fontSize: 13, fontWeight: 800 },
         },
-        grid: { left: 56, right: 148, top: 118, bottom: 42 },
+        grid: { left: 56, right: 116, top: 118, bottom: 42 },
         tooltip: {
           trigger: 'axis',
           formatter: (params: unknown) => {
@@ -742,6 +754,78 @@ export function BacktestGraph({
 
           <div className="backtest-graph-grid">
             <div className="backtest-graph-chart-card">
+              {strategyLevels.length > 0 && (
+                <div className="backtest-graph-level-editor" aria-label="그래프 전략선 입력">
+                  {strategyLevels.map((level) => {
+                    const visual = getStrategyLevelVisual(level)
+                    const shortLabel = level.shortLabel ?? visual.label
+                    const triggerText =
+                      typeof level.trigger === 'number' ? `${level.trigger > 0 ? '+' : ''}${level.trigger}%` : ''
+                    const priceValue = Number.isFinite(level.price) ? Number(level.price.toFixed(2)) : 0
+                    const quantityValue =
+                      typeof level.quantityPercent === 'number' ? Math.round(level.quantityPercent) : 0
+                    const canEditQuantity =
+                      level.canEditQuantity !== false && typeof level.quantityPercent === 'number'
+
+                    return (
+                      <div
+                        className="backtest-graph-level-row"
+                        key={level.id ?? `${level.label}-${level.price}`}
+                        style={{ '--level-color': visual.color } as CSSProperties}
+                        title={`${level.label} ${format.price(level.price)}`}
+                      >
+                        <span className="backtest-graph-level-row-label">
+                          <i aria-hidden="true" />
+                          <strong>{shortLabel}</strong>
+                          {triggerText && <em>{triggerText}</em>}
+                        </span>
+                        <label>
+                          <span>가격</span>
+                          <input
+                            aria-label={`${shortLabel} 가격`}
+                            disabled={!level.id || !onStrategyLevelChange}
+                            min="0"
+                            onChange={(event) => {
+                              const nextPrice = event.currentTarget.valueAsNumber
+                              if (!level.id || !Number.isFinite(nextPrice) || nextPrice <= 0) return
+                              onStrategyLevelChange?.({
+                                id: level.id,
+                                price: nextPrice,
+                                referencePrice: level.referencePrice,
+                              })
+                            }}
+                            step="0.01"
+                            type="number"
+                            value={priceValue}
+                          />
+                        </label>
+                        {canEditQuantity && (
+                          <label className="compact">
+                            <span>비중</span>
+                            <input
+                              aria-label={`${shortLabel} 비중`}
+                              disabled={!level.id || !onStrategyLevelChange}
+                              max="100"
+                              min="1"
+                              onChange={(event) => {
+                                const nextQuantity = event.currentTarget.valueAsNumber
+                                if (!level.id || !Number.isFinite(nextQuantity)) return
+                                onStrategyLevelChange?.({
+                                  id: level.id,
+                                  quantityPercent: nextQuantity,
+                                })
+                              }}
+                              step="1"
+                              type="number"
+                              value={quantityValue}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
               <div ref={chartElRef} className="backtest-graph-chart">
                 {renderPoints.length === 0 ? text.chartUnavailable : text.chartLoading}
               </div>
@@ -757,29 +841,6 @@ export function BacktestGraph({
                   value={progress}
                 />
               </label>
-              {strategyLevels.length > 0 && (
-                <div className="backtest-graph-levels" aria-label="전략 가격 기준">
-                  {strategyLevels.map((level) => {
-                    const visual = getStrategyLevelVisual(level)
-                    const triggerText =
-                      typeof level.trigger === 'number' ? `${level.trigger > 0 ? '+' : ''}${level.trigger}%` : ''
-
-                    return (
-                      <span
-                        className="backtest-graph-level-chip"
-                        key={level.id ?? `${level.label}-${level.price}`}
-                        style={{ '--level-color': visual.color } as CSSProperties}
-                        title={`${level.label} ${format.price(level.price)}`}
-                      >
-                        <i aria-hidden="true" />
-                        <strong>{level.group ?? visual.label}</strong>
-                        {triggerText && <em>{triggerText}</em>}
-                        <small>{level.label} · {format.price(level.price)}</small>
-                      </span>
-                    )
-                  })}
-                </div>
-              )}
             </div>
 
             <aside className="backtest-graph-status-card">

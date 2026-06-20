@@ -33,10 +33,20 @@ export type BacktestGraphStrategyLevel = {
   id?: string
   group?: string
   label: string
+  shortLabel?: string
   price: number
+  referencePrice?: number
   trigger?: number
   quantityPercent?: number
+  canEditQuantity?: boolean
   tone?: Extract<BacktestGraphTone, 'buy' | 'sell' | 'full-buy' | 'full-sell' | 'reentry-buy'>
+}
+
+export type BacktestGraphStrategyLevelChange = {
+  id: string
+  price?: number
+  referencePrice?: number
+  quantityPercent?: number
 }
 
 export type BacktestGraphSummary = {
@@ -110,6 +120,7 @@ export type BacktestGraphProps = {
   summary: BacktestGraphSummary
   formatter?: BacktestGraphFormatter
   labels?: Partial<BacktestGraphLabels>
+  onStrategyLevelChange?: (change: BacktestGraphStrategyLevelChange) => void
   initialMode?: 'simulation' | 'result'
   initialSpeed?: BacktestGraphSpeed
   className?: string
