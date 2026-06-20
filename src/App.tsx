@@ -2992,12 +2992,19 @@ function App() {
               title={`기준 1달러 ${usdKrwRate.toLocaleString('ko-KR')}원`}
               type="button"
             >
-              <span className={displayCurrency === 'krw' ? 'active' : ''}>원화</span>
-              <span className={displayCurrency === 'usd' ? 'active' : ''}>달러</span>
+              <span className={displayCurrency === 'krw' ? 'active' : ''}>
+                <b aria-hidden="true">₩</b>
+                <em>원화</em>
+              </span>
+              <span className={displayCurrency === 'usd' ? 'active' : ''}>
+                <b aria-hidden="true">$</b>
+                <em>달러</em>
+              </span>
             </button>
             <div className="market-toggle" role="group" aria-label="시장 모드 선택">
               {(['kr', 'us'] as MarketMode[]).map((mode) => (
                 <button
+                  aria-pressed={marketMode === mode}
                   className={marketMode === mode ? 'active' : ''}
                   key={mode}
                   onClick={() => handleMarketModeChange(mode)}
@@ -3006,7 +3013,7 @@ function App() {
                   <span className="market-toggle-flag" aria-hidden="true">
                     {marketPresets[mode].flagIcon}
                   </span>
-                  <span className="market-toggle-label">{marketPresets[mode].label}</span>
+                  <span className="market-toggle-label">{marketPresets[mode].shortLabel}</span>
                 </button>
               ))}
             </div>

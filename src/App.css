@@ -944,20 +944,24 @@ button {
 .currency-toggle {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
+  gap: 10px;
   min-width: 0;
-  padding: 4px;
-  border: 1px solid #d8dee6;
-  border-radius: 12px;
-  background: #ffffff;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: #6b7684;
 }
 
 .currency-toggle span {
-  display: grid;
+  position: relative;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
   min-height: 34px;
-  place-items: center;
-  border-radius: 9px;
+  padding: 0 4px;
+  border-radius: 0;
   background: transparent;
   font-size: 13px;
   font-weight: 850;
@@ -966,10 +970,41 @@ button {
   white-space: nowrap;
 }
 
+.currency-toggle span::after {
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  left: 4px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  content: '';
+  opacity: 0;
+  transform: scaleX(0.45);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
 .currency-toggle span.active {
-  background: #0b6bff;
-  color: #ffffff;
-  box-shadow: 0 8px 18px rgba(11, 107, 255, 0.18);
+  background: transparent;
+  color: #0b6bff;
+  font-weight: 950;
+  box-shadow: none;
+}
+
+.currency-toggle span.active::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.currency-toggle b,
+.currency-toggle em {
+  font-style: normal;
+  line-height: 1;
+}
+
+.currency-toggle b {
+  font-size: 14px;
+  font-weight: 950;
 }
 
 .market-countdown-panel {
@@ -1040,13 +1075,14 @@ button {
   display: grid;
   grid-template-columns: 1fr;
   gap: 8px;
-  padding: 6px;
-  border: 1px solid #d8dee6;
-  border-radius: 18px;
-  background: #ffffff;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .market-toggle button {
+  position: relative;
   min-width: 0;
   min-height: 82px;
   display: grid;
@@ -1054,13 +1090,27 @@ button {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 10px 14px;
-  border-radius: 14px;
+  padding: 10px 8px;
+  border-radius: 0;
   background: transparent;
   color: #6b7684;
   font-size: 22px;
   font-weight: 850;
   white-space: nowrap;
+}
+
+.market-toggle button::after {
+  position: absolute;
+  right: 8px;
+  bottom: 5px;
+  left: 8px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  content: '';
+  opacity: 0;
+  transform: scaleX(0.45);
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 .market-toggle-flag {
@@ -1079,9 +1129,20 @@ button {
 }
 
 .market-toggle button.active {
-  background: #0b6bff;
-  color: #ffffff;
-  box-shadow: 0 8px 18px rgba(11, 107, 255, 0.18);
+  background: transparent;
+  color: #0b6bff;
+  font-weight: 950;
+  box-shadow: none;
+}
+
+.market-toggle button.active::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.market-toggle button.active .market-toggle-flag {
+  transform: translateY(-1px);
+  filter: drop-shadow(0 3px 6px rgba(11, 107, 255, 0.2));
 }
 
 .signal-board {
@@ -3966,7 +4027,7 @@ button {
 
 .topbar-actions {
   grid-column: 1 / -1;
-  grid-template-columns: repeat(2, minmax(150px, 0.86fr)) minmax(210px, 1fr) repeat(4, minmax(0, 0.55fr));
+  grid-template-columns: repeat(2, minmax(116px, 0.62fr)) minmax(210px, 1fr) repeat(4, minmax(0, 0.55fr));
   align-items: center;
   align-content: stretch;
   gap: 7px;
@@ -3976,21 +4037,21 @@ button {
 .topbar-actions .market-toggle {
   grid-column: auto;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-  padding: 4px;
-  border-radius: 12px;
+  gap: 10px;
+  padding: 0 2px;
+  border-radius: 0;
 }
 
 .topbar-actions .market-toggle button {
   min-height: 34px;
-  gap: 7px;
-  padding: 6px 8px;
-  border-radius: 9px;
+  gap: 5px;
+  padding: 6px 4px;
+  border-radius: 0;
   font-size: 13px;
 }
 
 .topbar-actions .market-toggle-flag {
-  font-size: 18px;
+  font-size: 17px;
 }
 
 .topbar-actions .signal-board {
