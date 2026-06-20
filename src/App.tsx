@@ -70,6 +70,8 @@ type MarketSessionInfo = {
   status: MarketSessionStatus
   actionLabel: string
   countdown: string
+  phaseLabel: string
+  sessionTimes: string
   timeLabel: string
   nextOpenLabel: string
 }
@@ -989,6 +991,29 @@ const formatMarketDateLabel = (
   return `다음 개장일 ${date.month}.${date.day}(${weekday})`
 }
 
+const getMarketPhaseLabel = (now: Date, config: MarketSessionConfig) => {
+  const zoned = getZonedParts(now, config.timeZone)
+  const totalMinutes = zoned.hour * 60 + zoned.minute
+
+  if (!isTradingWeekday(zoned.year, zoned.month, zoned.day, config.timeZone)) return '휴장'
+
+  if (config.id === 'us') {
+    if (totalMinutes >= 4 * 60 && totalMinutes < 9 * 60 + 30) return '프리장'
+    if (totalMinutes >= 9 * 60 + 30 && totalMinutes <= 16 * 60) return '정규장'
+    if (totalMinutes > 16 * 60 && totalMinutes <= 20 * 60) return '애프터장'
+    return '대기'
+  }
+
+  if (totalMinutes >= 9 * 60 && totalMinutes <= 15 * 60 + 30) return '정규장'
+  if (totalMinutes >= 15 * 60 + 40 && totalMinutes <= 18 * 60) return '시간외'
+  return '대기'
+}
+
+const getMarketSessionTimes = (config: MarketSessionConfig) =>
+  config.id === 'us'
+    ? '프리장 04:00-09:30 ET · 정규장 09:30-16:00 ET · 애프터장 16:00-20:00 ET'
+    : '정규장 09:00-15:30 KST · 시간외 15:40-18:00 KST'
+
 const getMarketSessionInfo = (now: Date, config: MarketSessionConfig): MarketSessionInfo => {
   const zoned = getZonedParts(now, config.timeZone)
   const todayOpen = getDateInTimeZone(
@@ -1011,6 +1036,8 @@ const getMarketSessionInfo = (now: Date, config: MarketSessionConfig): MarketSes
   const openTimeLabel = `${padTimeUnit(config.openHour)}:${padTimeUnit(config.openMinute)}`
   const closeTimeLabel = `${padTimeUnit(config.closeHour)}:${padTimeUnit(config.closeMinute)}`
   const timeLabel = `${config.marketLabel ? `${config.marketLabel} · ` : ''}${openTimeLabel}-${closeTimeLabel}`
+  const phaseLabel = getMarketPhaseLabel(now, config)
+  const sessionTimes = getMarketSessionTimes(config)
 
   if (isTodayTradingDay && now >= todayOpen && now <= todayClose) {
     const nextTradingDate = getNextTradingDate(zoned.year, zoned.month, zoned.day + 1, config.timeZone)
@@ -1021,6 +1048,8 @@ const getMarketSessionInfo = (now: Date, config: MarketSessionConfig): MarketSes
       status: 'open',
       actionLabel: '마감까지',
       countdown: formatCountdown(todayClose.getTime() - now.getTime()),
+      phaseLabel,
+      sessionTimes,
       nextOpenLabel: formatMarketDateLabel(nextTradingDate, config.timeZone),
       timeLabel,
     }
@@ -1045,6 +1074,8 @@ const getMarketSessionInfo = (now: Date, config: MarketSessionConfig): MarketSes
     status: 'closed',
     actionLabel: '개장까지',
     countdown: formatCountdown(nextOpen.getTime() - now.getTime()),
+    phaseLabel,
+    sessionTimes,
     nextOpenLabel: formatMarketDateLabel(nextTradingDate, config.timeZone),
     timeLabel,
   }
@@ -2968,15 +2999,19 @@ function App() {
             <strong>{digitalTime}</strong>
             <em>{digitalDate}</em>
           </div>
-          <div className="market-countdown-panel" aria-label="주요 시장 개장 카운트다운">
+          <div className="market-countdown-panel" aria-label="주요 시장 시간 정보">
             {marketCountdowns.map((session) => (
               <article className={`market-countdown-card ${session.status}`} key={session.id}>
                 <div>
                   <span>{session.label}</span>
-                  <strong>{session.actionLabel}</strong>
+                  <strong>{session.phaseLabel}</strong>
                 </div>
-                <time>{session.countdown}</time>
+                <time>
+                  <small>{session.actionLabel}</small>
+                  {session.countdown}
+                </time>
                 <small className="market-countdown-schedule">{session.timeLabel}</small>
+                <small className="market-session-hours">{session.sessionTimes}</small>
                 <small className="market-countdown-next">{session.nextOpenLabel}</small>
               </article>
             ))}

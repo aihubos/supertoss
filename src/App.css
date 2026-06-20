@@ -3857,8 +3857,9 @@ button {
 }
 
 .market-toggle button.active {
-  background: #111827;
-  color: #ffffff;
+  background: transparent;
+  color: #0b6bff;
+  box-shadow: none;
 }
 
 .signal-light.mock.on,
@@ -3883,9 +3884,9 @@ button {
   top: 0;
   z-index: 30;
   grid-template-columns:
-    minmax(145px, 0.34fr)
-    minmax(124px, 0.26fr)
-    minmax(390px, 1fr);
+    minmax(138px, 0.24fr)
+    minmax(260px, 0.5fr)
+    minmax(360px, 1fr);
   gap: 10px;
   align-items: stretch;
   margin: 0 0 18px;
@@ -3937,8 +3938,9 @@ button {
 
 .digital-clock-card {
   align-content: center;
-  gap: 4px;
-  padding: 12px 14px;
+  gap: 6px;
+  min-height: 108px;
+  padding: 14px 16px;
 }
 
 .digital-clock-card::before {
@@ -3953,38 +3955,39 @@ button {
 }
 
 .digital-clock-card span {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .digital-clock-card span::after {
-  min-height: 20px;
-  padding: 0 7px;
+  min-height: 22px;
+  padding: 0 8px;
   font-size: 10px;
 }
 
 .digital-clock-card strong {
-  font-size: 28px;
+  font-size: clamp(38px, 4.2vw, 56px);
   line-height: 1;
+  letter-spacing: 0;
 }
 
 .digital-clock-card em {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .market-countdown-panel {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 7px;
   padding: 8px;
 }
 
 .market-countdown-card {
-  min-height: 66px;
+  min-height: 72px;
   grid-template-columns: minmax(0, 1fr);
   align-content: center;
   align-items: start;
-  gap: 4px 8px;
-  padding: 9px 10px;
-  border-radius: 12px;
+  gap: 3px 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
 }
 
 .market-countdown-card div {
@@ -3996,15 +3999,25 @@ button {
 }
 
 .market-countdown-card span {
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .market-countdown-card strong {
-  font-size: 11px;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(11, 107, 255, 0.09);
+  color: #0b6bff;
+  font-size: 10px;
+  line-height: 20px;
 }
 
 .market-countdown-card time {
-  font-size: 16px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 15px;
+  font-weight: 950;
   white-space: nowrap;
 }
 
@@ -4014,8 +4027,21 @@ button {
   line-height: 1.25;
 }
 
+.market-countdown-card time small {
+  color: #8b95a1;
+  font-size: 9px;
+  font-weight: 850;
+}
+
 .market-countdown-schedule {
   color: #6b7280;
+}
+
+.market-session-hours {
+  overflow: hidden;
+  color: #8b95a1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .market-countdown-next {
@@ -4124,7 +4150,7 @@ button {
 
 @media (max-width: 1320px) {
   .topbar {
-    grid-template-columns: minmax(145px, 0.34fr) minmax(124px, 0.26fr) minmax(390px, 1fr);
+    grid-template-columns: minmax(138px, 0.24fr) minmax(260px, 0.5fr) minmax(360px, 1fr);
   }
 
   .topbar-actions {
@@ -4165,7 +4191,7 @@ button {
   }
 
   .digital-clock-card strong {
-    font-size: 25px;
+    font-size: clamp(29px, 8vw, 34px);
   }
 
   .digital-clock-card {
