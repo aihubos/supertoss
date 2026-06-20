@@ -1,0 +1,504 @@
+.backtest-graph {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid #eef0f3;
+  border-radius: 20px;
+  background: #ffffff;
+  color: #111827;
+}
+
+.backtest-graph *,
+.backtest-graph *::before,
+.backtest-graph *::after {
+  box-sizing: border-box;
+}
+
+.backtest-graph button {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.backtest-graph button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.backtest-graph-header,
+.backtest-graph-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.backtest-graph-caption {
+  margin: 0 0 4px;
+  color: #8b95a1;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.backtest-graph-header h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 21px;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.backtest-graph-mode-switch,
+.backtest-graph-speed-control,
+.backtest-graph-export-actions {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #e5e8eb;
+  border-radius: 14px;
+  background: #f7f8fa;
+}
+
+.backtest-graph-mode-switch button,
+.backtest-graph-speed-control button,
+.backtest-graph-export-actions button {
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: 10px;
+  background: transparent;
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.backtest-graph-mode-switch button.active,
+.backtest-graph-speed-control button.active {
+  background: #ffffff;
+  color: #0b6bff;
+  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.06);
+}
+
+.backtest-graph-export-actions {
+  margin-left: auto;
+  background: #ffffff;
+}
+
+.backtest-graph-export-actions button {
+  background: #f2f4f6;
+  color: #333d4b;
+}
+
+.backtest-graph-export-actions button:first-child {
+  background: #111827;
+  color: #ffffff;
+}
+
+.backtest-graph-controls {
+  margin-top: 14px;
+  justify-content: flex-start;
+}
+
+.backtest-graph-controls > button {
+  min-height: 40px;
+  padding: 0 15px;
+  border-radius: 12px;
+  background: #f2f4f6;
+  color: #333d4b;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.backtest-graph-controls > button.primary {
+  background: #0b6bff;
+  color: #ffffff;
+}
+
+.backtest-graph-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.backtest-graph-chart-card {
+  min-width: 0;
+  padding: 14px 12px 12px;
+  border: 1px solid #eef0f3;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f7f8fa 100%);
+}
+
+.backtest-graph-chart {
+  display: grid;
+  width: 100%;
+  height: 500px;
+  place-items: center;
+  color: #8b95a1;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.backtest-graph-progress {
+  position: relative;
+  display: block;
+  height: 18px;
+  margin: 4px 12px 0;
+  cursor: pointer;
+}
+
+.backtest-graph-progress::before,
+.backtest-graph-progress span {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  height: 7px;
+  border-radius: 999px;
+  content: '';
+}
+
+.backtest-graph-progress::before {
+  width: 100%;
+  background: #e5e8eb;
+}
+
+.backtest-graph-progress span {
+  z-index: 1;
+  display: block;
+  background: #0b6bff;
+  transition: width 0.22s ease;
+}
+
+.backtest-graph-progress input {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.backtest-graph-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 10px 12px 0;
+}
+
+.backtest-graph-level-chip {
+  --level-color: #0b6bff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--level-color) 34%, #ffffff);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--level-color) 9%, #ffffff);
+  color: #333d4b;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.backtest-graph-level-chip i {
+  width: 14px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--level-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--level-color) 12%, transparent);
+}
+
+.backtest-graph-level-chip strong,
+.backtest-graph-level-chip em,
+.backtest-graph-level-chip small {
+  font: inherit;
+  white-space: nowrap;
+}
+
+.backtest-graph-level-chip strong {
+  color: var(--level-color);
+}
+
+.backtest-graph-level-chip em {
+  color: #6b7684;
+}
+
+.backtest-graph-level-chip small {
+  color: #111827;
+}
+
+.backtest-graph-status-card {
+  display: grid;
+  grid-template-columns: 170px minmax(140px, 0.6fr) minmax(0, 1fr);
+  align-content: start;
+  align-items: center;
+  gap: 7px;
+  padding: 17px;
+  border-radius: 18px;
+  background: #f7f8fa;
+}
+
+.backtest-graph-status-card > span {
+  color: #8b95a1;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.backtest-graph-status-card > strong {
+  overflow-wrap: anywhere;
+  color: #111827;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.backtest-graph-status-card > em {
+  font-style: normal;
+  font-size: 23px;
+  font-weight: 900;
+}
+
+.backtest-graph-status-card dl {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 0;
+}
+
+.backtest-graph-status-card dl div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 11px;
+  background: #ffffff;
+}
+
+.backtest-graph-status-card dt {
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.backtest-graph-status-card dd {
+  margin: 0;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 850;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.backtest-graph .is-profit-up,
+.backtest-graph .buy strong {
+  color: #0b6bff;
+}
+
+.backtest-graph .is-profit-down,
+.backtest-graph .sell strong {
+  color: #f04452;
+}
+
+.backtest-graph .full-buy strong {
+  color: #00a36c;
+}
+
+.backtest-graph .full-sell strong {
+  color: #7c3aed;
+}
+
+.backtest-graph .hold strong,
+.backtest-graph .neutral strong {
+  color: #6b7684;
+}
+
+.backtest-graph-event-timeline {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.backtest-graph-event-chip {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 68px 170px 1fr;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 13px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: #f7f8fa;
+  text-align: left;
+}
+
+.backtest-graph-event-chip.active {
+  border-color: rgba(11, 107, 255, 0.28);
+  background: #edf4ff;
+}
+
+.backtest-graph-event-chip time {
+  color: #8b95a1;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.backtest-graph-event-chip strong {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.backtest-graph-event-chip span {
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.backtest-graph-final-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.backtest-graph-final-summary span {
+  display: grid;
+  gap: 6px;
+  min-height: 72px;
+  padding: 13px;
+  border-radius: 15px;
+  background: #f2f6ff;
+}
+
+.backtest-graph-final-summary small {
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.backtest-graph-final-summary strong {
+  overflow-wrap: anywhere;
+  color: #111827;
+  font-size: 16px;
+  line-height: 1.15;
+}
+
+.backtest-graph-result-table {
+  margin-top: 14px;
+  overflow-x: auto;
+  border: 1px solid #eef0f3;
+  border-radius: 16px;
+}
+
+.backtest-graph-result-table table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+.backtest-graph-result-table th,
+.backtest-graph-result-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef0f3;
+  text-align: left;
+  vertical-align: top;
+}
+
+.backtest-graph-result-table th {
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 850;
+  background: #f7f8fa;
+}
+
+.backtest-graph-result-table td {
+  color: #333d4b;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.backtest-graph-result-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.backtest-graph-result-table td strong,
+.backtest-graph-result-table td span {
+  display: block;
+}
+
+.backtest-graph-result-table td span {
+  margin-top: 4px;
+  color: #6b7684;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@media (max-width: 1040px) {
+  .backtest-graph-final-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .backtest-graph-status-card dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .backtest-graph {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .backtest-graph-header,
+  .backtest-graph-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .backtest-graph-mode-switch,
+  .backtest-graph-speed-control,
+  .backtest-graph-export-actions {
+    width: 100%;
+  }
+
+  .backtest-graph-mode-switch button,
+  .backtest-graph-speed-control button,
+  .backtest-graph-export-actions button {
+    flex: 1;
+    padding: 0 6px;
+  }
+
+  .backtest-graph-export-actions {
+    margin-left: 0;
+  }
+
+  .backtest-graph-controls > button {
+    width: 100%;
+  }
+
+  .backtest-graph-chart {
+    height: 360px;
+  }
+
+  .backtest-graph-status-card {
+    grid-template-columns: 1fr;
+  }
+
+  .backtest-graph-status-card dl {
+    grid-template-columns: 1fr;
+  }
+
+  .backtest-graph-event-chip {
+    grid-template-columns: 56px 1fr;
+    align-items: start;
+    padding: 12px;
+  }
+
+  .backtest-graph-event-chip span {
+    grid-column: 2;
+  }
+}
