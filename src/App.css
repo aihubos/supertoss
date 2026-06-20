@@ -1,7 +1,7 @@
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 18rem minmax(0, 1fr) 348px;
+  grid-template-columns: 21rem minmax(0, 1fr) 348px;
   justify-content: center;
   background: #f9fafb;
   color: #111827;
@@ -163,8 +163,8 @@ button {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 14px 12px 18px;
+  gap: 16px;
+  padding: 16px 15px 20px;
   overflow-y: auto;
   scrollbar-gutter: stable;
   background: #ffffff;
@@ -211,7 +211,7 @@ button {
   place-items: center;
   width: 100%;
   min-height: 132px;
-  padding: 14px 48px 18px 10px;
+  padding: 14px 54px 20px 12px;
   border-bottom: 1px solid #f3f4f6;
   background: transparent;
   cursor: pointer;
@@ -245,7 +245,7 @@ button {
 
 .side-nav {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .side-nav-heading {
@@ -261,7 +261,7 @@ button {
 .nav-menu-list,
 .nav-favorite-group {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .nav-menu-row {
@@ -270,9 +270,9 @@ button {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 4px;
-  min-height: 40px;
-  padding: 0 4px 0 0;
-  border-radius: 12px;
+  min-height: 52px;
+  padding: 0 6px 0 0;
+  border-radius: 14px;
   cursor: grab;
   transition: background-color 160ms ease, opacity 160ms ease, transform 160ms ease;
 }
@@ -294,17 +294,18 @@ button {
 .nav-main-button {
   min-width: 0;
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-columns: 42px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
-  min-height: 40px;
-  padding: 4px 6px;
-  border-radius: 12px;
+  gap: 12px;
+  min-height: 52px;
+  padding: 6px 8px;
+  border-radius: 14px;
   background: transparent;
   color: #4b5563;
   text-align: left;
-  font-size: 14px;
+  font-size: 19px;
   font-weight: 750;
+  line-height: 1.2;
 }
 
 .nav-menu-row.active .nav-main-button,
@@ -320,8 +321,8 @@ button {
 }
 
 .nav-icon {
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
   border-radius: 10px;
@@ -337,13 +338,13 @@ button {
 
 .nav-menu-controls {
   display: inline-grid;
-  grid-template-columns: 28px;
+  grid-template-columns: 34px;
   gap: 4px;
 }
 
 .nav-menu-controls button {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   border-radius: 10px;
@@ -684,7 +685,30 @@ button {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  background: #8b95a1;
+  box-shadow: 0 0 0 4px rgba(139, 149, 161, 0.12);
+}
+
+.ranking-device-status.online {
+  color: #0ca678;
+}
+
+.ranking-device-status.online > span {
+  background: #19c26b;
+  box-shadow: 0 0 0 4px rgba(25, 194, 107, 0.12);
+}
+
+.ranking-device-status.offline {
+  color: #f04452;
+}
+
+.ranking-device-status.offline > span {
   background: #ff375f;
+  box-shadow: 0 0 0 4px rgba(255, 55, 95, 0.12);
+}
+
+.ranking-device-status.pending {
+  color: #6b7684;
 }
 
 .ranking-device-status em {
@@ -2400,6 +2424,38 @@ button {
   font-weight: 850;
 }
 
+.stage-editor-group {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.stage-editor-group-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 2px 0;
+}
+
+.stage-editor-group-title strong {
+  color: #333d4b;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.stage-editor-group-title button {
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 9px;
+  background: #edf4ff;
+  color: #0b6bff;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .stage-editor-row {
   padding: 10px;
   border-radius: 13px;
@@ -2438,7 +2494,7 @@ button {
 }
 
 .stage-editor-row.dip-sell > strong {
-  color: #d9480f;
+  color: #1d4ed8;
 }
 
 .stage-editor-row.crash-full-sell > strong {
@@ -3989,9 +4045,9 @@ button {
 }
 
 .market-countdown-card {
-  min-height: 102px;
+  min-height: 112px;
   grid-template-columns: minmax(0, 1fr);
-  align-content: center;
+  align-content: start;
   align-items: start;
   gap: 3px 8px;
   padding: 8px 10px;
@@ -4033,6 +4089,8 @@ button {
   grid-column: auto;
   font-size: 9px;
   line-height: 1.25;
+  overflow: visible;
+  white-space: normal;
 }
 
 .market-countdown-card time small {
@@ -4047,16 +4105,17 @@ button {
 
 .market-session-hours {
   display: grid;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
   color: #8b95a1;
 }
 
 .market-session-hours span {
   display: flex;
+  flex-wrap: wrap;
   min-width: 0;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 6px;
   font-size: 9px;
   line-height: 1.18;
@@ -4065,10 +4124,10 @@ button {
 .market-session-hours b,
 .market-session-hours em {
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   font-style: normal;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .market-session-hours b {
@@ -4093,7 +4152,7 @@ button {
   justify-self: start;
   color: #2563eb;
   font-weight: 900;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .topbar-actions {
@@ -4214,7 +4273,7 @@ button {
   }
 
   .market-countdown-panel {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -4247,7 +4306,7 @@ button {
   }
 
   .market-countdown-panel {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .market-countdown-card {
@@ -4260,7 +4319,7 @@ button {
   }
 
   .market-countdown-schedule {
-    display: none;
+    display: block;
   }
 
   .market-countdown-next {

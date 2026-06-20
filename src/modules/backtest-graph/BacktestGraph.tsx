@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties } from 'react'
 import './BacktestGraph.css'
 import type {
   BacktestGraphAction,
@@ -14,6 +13,12 @@ import type {
 type EChartsModule = typeof import('echarts')
 type EChartsInstance = import('echarts').ECharts
 type EChartsOption = import('echarts').EChartsOption
+type ZrPointerEvent = {
+  offsetY?: number
+  event?: {
+    preventDefault?: () => void
+  }
+}
 
 type RenderPoint = BacktestGraphPoint & {
   renderIndex: number
@@ -354,6 +359,7 @@ export function BacktestGraph({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordedStreamRef = useRef<MediaStream | null>(null)
   const videoCaptureCleanupRef = useRef<(() => void) | null>(null)
+  const draggingStrategyLevelIdRef = useRef<string | null>(null)
   const [mode, setMode] = useState<'simulation' | 'result'>(initialMode)
   const [isPlaying, setIsPlaying] = useState(false)
   const [speed, setSpeed] = useState<BacktestGraphSpeed>(initialSpeed)
@@ -462,6 +468,7 @@ export function BacktestGraph({
 
     let disposed = false
     let removeResize: (() => void) | undefined
+    let removeChartInteraction: (() => void) | undefined
 
     const renderChart = async () => {
       const echarts = echartsModuleRef.current ?? (await import('echarts'))
@@ -694,6 +701,83 @@ export function BacktestGraph({
 
       chart.setOption(option, true)
 
+      const chartElement = chartElRef.current
+      const editableStrategyLevels = strategyLevels.filter(
+        (level) => level.id && Number.isFinite(level.price) && level.price > 0,
+      )
+      const resetChartCursor = () => {
+        if (chartElement) chartElement.style.cursor = ''
+      }
+      const getLevelNearPointer = (offsetY?: number) => {
+        if (!onStrategyLevelChange || typeof offsetY !== 'number') return null
+
+        return editableStrategyLevels.reduce<BacktestGraphStrategyLevel | null>((closest, level) => {
+          const pixel = chart.convertToPixel({ xAxisIndex: 0, yAxisIndex: 0 }, [0, level.price])
+          const yPixel = Array.isArray(pixel) ? Number(pixel[1]) : Number(pixel)
+          if (!Number.isFinite(yPixel)) return closest
+
+          const distance = Math.abs(yPixel - offsetY)
+          if (distance > 12) return closest
+          if (!closest) return level
+
+          const closestPixel = chart.convertToPixel({ xAxisIndex: 0, yAxisIndex: 0 }, [0, closest.price])
+          const closestYPixel = Array.isArray(closestPixel) ? Number(closestPixel[1]) : Number(closestPixel)
+          return distance < Math.abs(closestYPixel - offsetY) ? level : closest
+        }, null)
+      }
+      const getPriceFromPointer = (offsetY?: number) => {
+        if (typeof offsetY !== 'number') return null
+        const converted = chart.convertFromPixel({ xAxisIndex: 0, yAxisIndex: 0 }, [0, offsetY])
+        const price = Array.isArray(converted) ? Number(converted[1]) : Number(converted)
+        return Number.isFinite(price) && price > 0 ? price : null
+      }
+      const handlePointerDown = (event: ZrPointerEvent) => {
+        const targetLevel = getLevelNearPointer(event.offsetY)
+        if (!targetLevel?.id) return
+
+        draggingStrategyLevelIdRef.current = targetLevel.id
+        if (chartElement) chartElement.style.cursor = 'ns-resize'
+        event.event?.preventDefault?.()
+      }
+      const handlePointerMove = (event: ZrPointerEvent) => {
+        const draggingId = draggingStrategyLevelIdRef.current
+        if (!draggingId) {
+          if (!chartElement) return
+          chartElement.style.cursor = getLevelNearPointer(event.offsetY) ? 'ns-resize' : ''
+          return
+        }
+
+        const nextPrice = getPriceFromPointer(event.offsetY)
+        const level = editableStrategyLevels.find((item) => item.id === draggingId)
+        if (!level || nextPrice === null) return
+
+        onStrategyLevelChange?.({
+          id: draggingId,
+          price: Number(nextPrice.toFixed(4)),
+          referencePrice: level.referencePrice,
+        })
+      }
+      const handlePointerUp = () => {
+        draggingStrategyLevelIdRef.current = null
+        resetChartCursor()
+      }
+
+      if (onStrategyLevelChange && editableStrategyLevels.length > 0) {
+        const zr = chart.getZr()
+        zr.on('mousedown', handlePointerDown)
+        zr.on('mousemove', handlePointerMove)
+        zr.on('mouseup', handlePointerUp)
+        zr.on('globalout', handlePointerUp)
+        removeChartInteraction = () => {
+          zr.off('mousedown', handlePointerDown)
+          zr.off('mousemove', handlePointerMove)
+          zr.off('mouseup', handlePointerUp)
+          zr.off('globalout', handlePointerUp)
+          draggingStrategyLevelIdRef.current = null
+          resetChartCursor()
+        }
+      }
+
       const resize = () => chart.resize()
       window.addEventListener('resize', resize)
       removeResize = () => window.removeEventListener('resize', resize)
@@ -704,8 +788,21 @@ export function BacktestGraph({
     return () => {
       disposed = true
       removeResize?.()
+      removeChartInteraction?.()
     }
-  }, [actions, format, maxProgress, mode, renderPoints, simIndex, strategyLevels, text.title, visibleActions, visiblePoints])
+  }, [
+    actions,
+    format,
+    maxProgress,
+    mode,
+    onStrategyLevelChange,
+    renderPoints,
+    simIndex,
+    strategyLevels,
+    text.title,
+    visibleActions,
+    visiblePoints,
+  ])
 
   const resetSimulation = () => {
     setIsPlaying(false)
@@ -870,79 +967,10 @@ export function BacktestGraph({
           </div>
 
           <div className="backtest-graph-grid">
-            <div className="backtest-graph-chart-card">
-              {strategyLevels.length > 0 && (
-                <div className="backtest-graph-level-editor" aria-label="그래프 전략선 입력">
-                  {strategyLevels.map((level) => {
-                    const visual = getStrategyLevelVisual(level)
-                    const shortLabel = level.shortLabel ?? visual.label
-                    const triggerText =
-                      typeof level.trigger === 'number' ? `${level.trigger > 0 ? '+' : ''}${level.trigger}%` : ''
-                    const priceValue = Number.isFinite(level.price) ? Number(level.price.toFixed(2)) : 0
-                    const quantityValue =
-                      typeof level.quantityPercent === 'number' ? Math.round(level.quantityPercent) : 0
-                    const canEditQuantity =
-                      level.canEditQuantity !== false && typeof level.quantityPercent === 'number'
-
-                    return (
-                      <div
-                        className="backtest-graph-level-row"
-                        key={level.id ?? `${level.label}-${level.price}`}
-                        style={{ '--level-color': visual.color } as CSSProperties}
-                        title={`${level.label} ${format.price(level.price)}`}
-                      >
-                        <span className="backtest-graph-level-row-label">
-                          <i aria-hidden="true" />
-                          <strong>{shortLabel}</strong>
-                          {triggerText && <em>{triggerText}</em>}
-                        </span>
-                        <label>
-                          <span>가격</span>
-                          <input
-                            aria-label={`${shortLabel} 가격`}
-                            disabled={!level.id || !onStrategyLevelChange}
-                            min="0"
-                            onChange={(event) => {
-                              const nextPrice = event.currentTarget.valueAsNumber
-                              if (!level.id || !Number.isFinite(nextPrice) || nextPrice <= 0) return
-                              onStrategyLevelChange?.({
-                                id: level.id,
-                                price: nextPrice,
-                                referencePrice: level.referencePrice,
-                              })
-                            }}
-                            step="0.01"
-                            type="number"
-                            value={priceValue}
-                          />
-                        </label>
-                        {canEditQuantity && (
-                          <label className="compact">
-                            <span>비중</span>
-                            <input
-                              aria-label={`${shortLabel} 비중`}
-                              disabled={!level.id || !onStrategyLevelChange}
-                              max="100"
-                              min="1"
-                              onChange={(event) => {
-                                const nextQuantity = event.currentTarget.valueAsNumber
-                                if (!level.id || !Number.isFinite(nextQuantity)) return
-                                onStrategyLevelChange?.({
-                                  id: level.id,
-                                  quantityPercent: nextQuantity,
-                                })
-                              }}
-                              step="1"
-                              type="number"
-                              value={quantityValue}
-                            />
-                          </label>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+            <div
+              className="backtest-graph-chart-card"
+              data-strategy-editable={onStrategyLevelChange ? 'true' : undefined}
+            >
               <div ref={chartElRef} className="backtest-graph-chart">
                 {renderPoints.length === 0 ? text.chartUnavailable : text.chartLoading}
               </div>

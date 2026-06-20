@@ -662,22 +662,17 @@ const stockSearchSeeds: TossRankingStock[] = [
 const usdKrwRate = 1380
 
 const defaultStrategyStages: StrategyStage[] = [
-  { id: 'rise-1', label: '상승판매 1단계', trigger: 3, quantityPercent: 20, type: 'rise-sell', enabled: true },
-  { id: 'rise-2', label: '상승판매 2단계', trigger: 5, quantityPercent: 30, type: 'rise-sell', enabled: true },
-  { id: 'rise-3', label: '상승판매 3단계', trigger: 8, quantityPercent: 50, type: 'rise-sell', enabled: true },
-  { id: 'dip-buy-1', label: '하락매수 1단계', trigger: -3, quantityPercent: 10, type: 'dip-buy', enabled: true },
-  { id: 'dip-buy-2', label: '하락매수 2단계', trigger: -6, quantityPercent: 15, type: 'dip-buy', enabled: true },
-  { id: 'dip-buy-3', label: '하락매수 3단계', trigger: -9, quantityPercent: 25, type: 'dip-buy', enabled: true },
-  { id: 'dip-sell-1', label: '하락매도 1단계', trigger: -5, quantityPercent: 20, type: 'dip-sell', enabled: false },
-  { id: 'dip-sell-2', label: '하락매도 2단계', trigger: -8, quantityPercent: 30, type: 'dip-sell', enabled: false },
-  { id: 'crash-full-sell', label: '급락 전량매도', trigger: -12, quantityPercent: 100, type: 'crash-full-sell', enabled: false },
+  { id: 'rise-1', label: '상승매도 1차', trigger: 3, quantityPercent: 30, type: 'rise-sell', enabled: true },
+  { id: 'dip-sell-1', label: '하락매도 1차', trigger: -5, quantityPercent: 30, type: 'dip-sell', enabled: true },
+  { id: 'crash-full-sell', label: '전량매도', trigger: -12, quantityPercent: 100, type: 'crash-full-sell', enabled: true },
+  { id: 'dip-buy-1', label: '급락매수', trigger: -9, quantityPercent: 25, type: 'dip-buy', enabled: true },
   {
     id: 'post-full-sell-reentry',
-    label: '전량매도 후 하락 전량매수',
+    label: '전량매수',
     trigger: -5,
     quantityPercent: 100,
     type: 'post-full-sell-reentry',
-    enabled: false,
+    enabled: true,
   },
 ]
 
@@ -1279,12 +1274,22 @@ const cloneDefaultStrategyStages = () => defaultStrategyStages.map((stage) => ({
 
 const normalizeStrategyStages = (stages: StrategyStage[] = []) => {
   const byId = new Map(stages.map((stage) => [stage.id, stage]))
-
-  return defaultStrategyStages.map((defaultStage) => ({
+  const defaultIds = new Set(defaultStrategyStages.map((stage) => stage.id))
+  const defaultStages = defaultStrategyStages.map((defaultStage) => ({
     ...defaultStage,
     ...byId.get(defaultStage.id),
     enabled: byId.get(defaultStage.id)?.enabled ?? defaultStage.enabled ?? true,
   }))
+  const extraStages = stages
+    .filter((stage) => !defaultIds.has(stage.id))
+    .map((stage) => ({ ...stage, enabled: stage.enabled ?? true }))
+
+  return [...defaultStages, ...extraStages].sort((left, right) => {
+    const typeOrder = ['rise-sell', 'dip-sell', 'crash-full-sell', 'dip-buy', 'post-full-sell-reentry']
+    const typeDiff = typeOrder.indexOf(left.type) - typeOrder.indexOf(right.type)
+    if (typeDiff !== 0) return typeDiff
+    return getStrategyStageStep(left) - getStrategyStageStep(right)
+  })
 }
 
 const dipBuyReserveRate =
@@ -1307,15 +1312,10 @@ const getRiseSellTriggers = (firstTrigger: number) => [
 ]
 
 const getStrategyStagesForStock = (stock: SavedStock) => {
-  const riseSellTriggers = getRiseSellTriggers(stock.sellUp)
-
   return normalizeStrategyStages(cloneDefaultStrategyStages()).map((stage) => {
-    if (stage.id === 'rise-1') return { ...stage, trigger: riseSellTriggers[0] }
-    if (stage.id === 'rise-2') return { ...stage, trigger: riseSellTriggers[1] }
-    if (stage.id === 'rise-3') return { ...stage, trigger: riseSellTriggers[2] }
-    if (stage.id === 'dip-buy-1') return { ...stage, trigger: stock.defenseDown }
-    if (stage.id === 'dip-buy-2') return { ...stage, trigger: stock.stopLoss }
-    if (stage.id === 'dip-buy-3') return { ...stage, trigger: stock.rebuyDown }
+    if (stage.type === 'rise-sell') return { ...stage, trigger: stock.sellUp }
+    if (stage.type === 'dip-sell') return { ...stage, trigger: stock.stopLoss }
+    if (stage.type === 'dip-buy') return { ...stage, trigger: stock.rebuyDown }
     return stage
   })
 }
@@ -1329,7 +1329,7 @@ const getStrategyStageTone = (stage: StrategyStage): BacktestStrategyLevel['tone
 
 const getStrategyStageGroup = (stage: StrategyStage) => {
   if (stage.type === 'rise-sell') return '상승 매도'
-  if (stage.type === 'dip-buy') return stage.id === 'dip-buy-3' ? '급락 매수' : '하락 매수'
+  if (stage.type === 'dip-buy') return '급락 매수'
   if (stage.type === 'dip-sell') return '하락 매도'
   if (stage.type === 'post-full-sell-reentry') return '재진입 전량매수'
   return '급락 전량매도'
@@ -1350,24 +1350,24 @@ const sortExecutableStages = (stages: StrategyStage[]) =>
 
 const getStrategyStageTypeLabel = (stage: StrategyStage) => {
   if (stage.type === 'rise-sell') return '상승 매도'
-  if (stage.type === 'dip-buy') return '하락 매수'
+  if (stage.type === 'dip-buy') return '급락 매수'
   if (stage.type === 'dip-sell') return '하락 매도'
-  if (stage.type === 'post-full-sell-reentry') return '재진입 전량매수'
-  return '급락 전량매도'
+  if (stage.type === 'post-full-sell-reentry') return '전량 매수'
+  return '전량 매도'
 }
 
 const getStrategyStageStep = (stage: StrategyStage) => {
   const match = stage.id.match(/-(\d+)$/)
-  return match ? Number(match[1]) : 0
+  return match ? Number(match[1]) : 1
 }
 
 const getStrategyStageShortLabel = (stage: StrategyStage) => {
   const step = getStrategyStageStep(stage)
-  if (stage.type === 'rise-sell') return `${step || 1}차 매도`
-  if (stage.type === 'dip-buy') return stage.id === 'dip-buy-3' ? '급락매수' : `${step || 1}차 매수`
-  if (stage.type === 'dip-sell') return `${step || 1}차 하락매도`
-  if (stage.type === 'post-full-sell-reentry') return '재매수'
-  return '급락매도'
+  if (stage.type === 'rise-sell') return `상승매도 ${step}차`
+  if (stage.type === 'dip-buy') return step > 1 ? `급락매수 ${step}차` : '급락매수'
+  if (stage.type === 'dip-sell') return `하락매도 ${step}차`
+  if (stage.type === 'post-full-sell-reentry') return step > 1 ? `전량매수 ${step}차` : '전량매수'
+  return step > 1 ? `전량매도 ${step}차` : '전량매도'
 }
 
 const canEditStrategyStageQuantity = (stage: StrategyStage) =>
@@ -1377,9 +1377,9 @@ const getStrategyStageTriggerLabel = (stage: StrategyStage) =>
   stage.type === 'rise-sell'
     ? '상승률 %'
     : stage.type === 'crash-full-sell'
-      ? '급락률 %'
+      ? '전량매도 하락률 %'
       : stage.type === 'post-full-sell-reentry'
-        ? '재진입 하락률 %'
+        ? '전량매수 하락률 %'
         : '하락률 %'
 
 const getStrategyStageQuantityLabel = (stage: StrategyStage) =>
@@ -1388,6 +1388,51 @@ const getStrategyStageQuantityLabel = (stage: StrategyStage) =>
     : stage.type === 'crash-full-sell' || stage.type === 'post-full-sell-reentry'
       ? '전량'
       : '수량 %'
+
+const addableStrategyStageTypes: StrategyStage['type'][] = [
+  'rise-sell',
+  'dip-sell',
+  'crash-full-sell',
+  'post-full-sell-reentry',
+]
+
+const getStrategyStageAddGroupLabel = (type: StrategyStage['type']) => {
+  if (type === 'rise-sell') return '상승 매도'
+  if (type === 'dip-sell') return '하락 매도'
+  if (type === 'crash-full-sell') return '전량 매도'
+  if (type === 'post-full-sell-reentry') return '전량 매수'
+  return '급락 매수'
+}
+
+const getStrategyStageId = (type: StrategyStage['type'], step: number) => {
+  if (type === 'rise-sell') return `rise-${step}`
+  if (type === 'dip-sell') return `dip-sell-${step}`
+  if (type === 'dip-buy') return `dip-buy-${step}`
+  if (type === 'crash-full-sell') return step === 1 ? 'crash-full-sell' : `crash-full-sell-${step}`
+  return step === 1 ? 'post-full-sell-reentry' : `post-full-sell-reentry-${step}`
+}
+
+const createStrategyStage = (type: StrategyStage['type'], step: number, previousStage?: StrategyStage): StrategyStage => {
+  const lastTrigger = previousStage?.trigger
+  const trigger =
+    type === 'rise-sell'
+      ? (lastTrigger ?? 3) + (step > 1 ? 2 : 0)
+      : (lastTrigger ?? (type === 'crash-full-sell' ? -12 : -5)) - (step > 1 ? 3 : 0)
+  const quantityPercent =
+    type === 'crash-full-sell' || type === 'post-full-sell-reentry'
+      ? 100
+      : previousStage?.quantityPercent ?? (type === 'rise-sell' ? 30 : 25)
+  const stage = {
+    id: getStrategyStageId(type, step),
+    label: '',
+    trigger,
+    quantityPercent,
+    type,
+    enabled: true,
+  }
+
+  return { ...stage, label: getStrategyStageShortLabel(stage) }
+}
 
 const getSavedStockStrategyStages = (stock: SavedStock) =>
   normalizeStrategyStages(stock.strategyStages ?? getStrategyStagesForStock(stock))
@@ -1718,7 +1763,9 @@ const buildBacktestResult = (
   const prices = pricePath.map((point) => point.price)
   const normalizedStages = normalizeStrategyStages(form.stages)
   const activeStages = normalizedStages.filter((stage) => stage.enabled !== false)
-  const reentryStage = activeStages.find((stage) => stage.type === 'post-full-sell-reentry')
+  const reentryStages = activeStages
+    .filter((stage) => stage.type === 'post-full-sell-reentry')
+    .sort((left, right) => getStrategyStageStep(left) - getStrategyStageStep(right))
   const regularStages = activeStages.filter((stage) => stage.type !== 'post-full-sell-reentry')
   let pendingReentry:
     | {
@@ -1862,23 +1909,27 @@ const buildBacktestResult = (
                 ? '하락매도'
                 : '상승판매'
         tone = isFullSell ? 'full-sell' : 'sell'
-        if (isFullSell && reentryStage && !executedStages.has(reentryStage.id)) {
+        const availableReentryStages = reentryStages.filter((reentryStage) => !executedStages.has(reentryStage.id))
+        if (isFullSell && availableReentryStages.length > 0) {
+          const [nextReentryStage] = availableReentryStages
           pendingReentry = {
             sellIndex: index,
             sellPrice: price,
-            stage: reentryStage,
+            stage: nextReentryStage,
           }
-          strategyLevels.push({
-            id: reentryStage.id,
-            label: reentryStage.label,
-            shortLabel: getStrategyStageShortLabel(reentryStage),
-            price: price * (1 + reentryStage.trigger / 100),
-            referencePrice: price,
-            trigger: reentryStage.trigger,
-            quantityPercent: reentryStage.quantityPercent,
-            canEditQuantity: canEditStrategyStageQuantity(reentryStage),
-            tone: getStrategyStageTone(reentryStage),
-            group: getStrategyStageGroup(reentryStage),
+          availableReentryStages.forEach((reentryStage) => {
+            strategyLevels.push({
+              id: reentryStage.id,
+              label: reentryStage.label,
+              shortLabel: getStrategyStageShortLabel(reentryStage),
+              price: price * (1 + reentryStage.trigger / 100),
+              referencePrice: price,
+              trigger: reentryStage.trigger,
+              quantityPercent: reentryStage.quantityPercent,
+              canEditQuantity: canEditStrategyStageQuantity(reentryStage),
+              tone: getStrategyStageTone(reentryStage),
+              group: getStrategyStageGroup(reentryStage),
+            })
           })
         }
       }
@@ -2442,6 +2493,17 @@ function App() {
       (option) => option.category === rankingCategory && option.direction === rankingSortDirection,
     ) ?? rankingViewOptions[0]
   const floatingRankingTitle = `${activeRankingView.label} TOP 10`
+  const rankingConnection = useMemo(() => {
+    if (halted) {
+      return { tone: 'offline', label: '오프라인' }
+    }
+
+    if (floatingRankingStocks.length > 0) {
+      return { tone: 'online', label: '온라인' }
+    }
+
+    return { tone: 'pending', label: '대기' }
+  }, [floatingRankingStocks.length, halted])
   const getFloatingRankingMetric = (stock: RankingLeaderStock) => {
     if (rankingCategory === 'marketCap') return `${stock.marketCap.toLocaleString('ko-KR')}조`
     if (rankingCategory === 'volume') return `${stock.volume}%`
@@ -2572,12 +2634,16 @@ function App() {
         stopLoss: recommendedBuyStages[1] ?? current.stopLoss,
         rebuyDown: recommendedBuyStages[2] ?? current.rebuyDown,
         stages: current.stages.map((stage) => {
-          if (stage.id === 'rise-1') return { ...stage, trigger: recommendedSellTriggers[0] }
-          if (stage.id === 'rise-2') return { ...stage, trigger: recommendedSellTriggers[1] }
-          if (stage.id === 'rise-3') return { ...stage, trigger: recommendedSellTriggers[2] }
-          if (stage.id === 'dip-buy-1') return { ...stage, trigger: recommendedBuyStages[0] ?? stage.trigger }
-          if (stage.id === 'dip-buy-2') return { ...stage, trigger: recommendedBuyStages[1] ?? stage.trigger }
-          if (stage.id === 'dip-buy-3') return { ...stage, trigger: recommendedBuyStages[2] ?? stage.trigger }
+          const stageStep = getStrategyStageStep(stage)
+          if (stage.type === 'rise-sell') {
+            return { ...stage, trigger: recommendedSellTriggers[stageStep - 1] ?? stage.trigger }
+          }
+          if (stage.type === 'dip-buy') {
+            return { ...stage, trigger: recommendedBuyStages[2] ?? recommendedBuyStages[stageStep - 1] ?? stage.trigger }
+          }
+          if (stage.type === 'dip-sell') {
+            return { ...stage, trigger: recommendedBuyStages[stageStep] ?? stage.trigger }
+          }
           return stage
         }),
       }
@@ -2722,11 +2788,34 @@ function App() {
     setApiForm((current) => ({ ...current, [field]: value }))
   }
 
+  const syncCurrentStockStrategyStages = (stockId: string, stages: StrategyStage[]) => {
+    setSavedStocks((current) =>
+      current.map((stock) => (String(stock.id) === stockId ? { ...stock, strategyStages: stages } : stock)),
+    )
+  }
+
   const updateStrategyStage = (id: string, field: 'trigger' | 'quantityPercent' | 'enabled', value: number | boolean) => {
-    setBacktestForm((current) => ({
-      ...current,
-      stages: normalizeStrategyStages(current.stages).map((stage) => (stage.id === id ? { ...stage, [field]: value } : stage)),
-    }))
+    setBacktestForm((current) => {
+      const stages = normalizeStrategyStages(current.stages).map((stage) =>
+        stage.id === id ? { ...stage, [field]: value } : stage,
+      )
+      syncCurrentStockStrategyStages(current.stockId, stages)
+
+      return { ...current, stages }
+    })
+  }
+
+  const addStrategyStage = (type: StrategyStage['type']) => {
+    setBacktestForm((current) => {
+      const stages = normalizeStrategyStages(current.stages)
+      const sameTypeStages = stages.filter((stage) => stage.type === type)
+      const nextStep = Math.max(0, ...sameTypeStages.map(getStrategyStageStep)) + 1
+      const previousStage = [...sameTypeStages].sort((left, right) => getStrategyStageStep(right) - getStrategyStageStep(left))[0]
+      const nextStages = normalizeStrategyStages([...stages, createStrategyStage(type, nextStep, previousStage)])
+      syncCurrentStockStrategyStages(current.stockId, nextStages)
+
+      return { ...current, stages: nextStages }
+    })
   }
 
   const updateStrategyLevelFromGraph = ({
@@ -2763,6 +2852,7 @@ function App() {
     }
 
     setBacktestForm(nextForm)
+    syncCurrentStockStrategyStages(nextForm.stockId, nextForm.stages)
     setBacktestResult(
       buildBacktestResult(
         currentBacktestStock,
@@ -3140,9 +3230,9 @@ function App() {
             <div>
               <strong>주식 시세</strong>
             </div>
-            <div className="ranking-device-status">
+            <div className={`ranking-device-status ${rankingConnection.tone}`}>
               <span aria-hidden="true" />
-              <em>{apiReady ? '온라인' : '오프라인'}</em>
+              <em>{rankingConnection.label}</em>
               <b aria-hidden="true">
                 <Monitor size={17} />
               </b>
@@ -3808,43 +3898,63 @@ function App() {
                     <span>전략 단계</span>
                     <strong>사용 / 조건 / 비중</strong>
                   </div>
-                  {normalizeStrategyStages(backtestForm.stages).map((stage) => (
-                    <div className={`stage-editor-row ${stage.type} ${stage.enabled === false ? 'disabled' : ''}`} key={stage.id}>
-                      <strong>
-                        <span>{stage.label}</span>
-                        <small>{getStrategyStageTypeLabel(stage)}</small>
-                      </strong>
-                      <label className="stage-enabled-toggle">
-                        <span>사용</span>
-                        <input
-                          checked={stage.enabled !== false}
-                          onChange={(event) => updateStrategyStage(stage.id, 'enabled', event.target.checked)}
-                          type="checkbox"
-                        />
-                      </label>
-                      <label>
-                        <span>{getStrategyStageTriggerLabel(stage)}</span>
-                        <input
-                          onChange={(event) => updateStrategyStage(stage.id, 'trigger', Number(event.target.value))}
-                          type="number"
-                          value={stage.trigger}
-                        />
-                      </label>
-                      <label>
-                        <span>{getStrategyStageQuantityLabel(stage)}</span>
-                        <input
-                          disabled={stage.type === 'crash-full-sell' || stage.type === 'post-full-sell-reentry'}
-                          max="100"
-                          min="1"
-                          onChange={(event) =>
-                            updateStrategyStage(stage.id, 'quantityPercent', Number(event.target.value))
-                          }
-                          type="number"
-                          value={stage.quantityPercent}
-                        />
-                      </label>
-                    </div>
-                  ))}
+                  {([...addableStrategyStageTypes, 'dip-buy'] as StrategyStage['type'][]).map((type) => {
+                    const groupStages = normalizeStrategyStages(backtestForm.stages).filter((stage) => stage.type === type)
+                    if (groupStages.length === 0) return null
+
+                    return (
+                      <div className="stage-editor-group" key={type}>
+                        <div className="stage-editor-group-title">
+                          <strong>{getStrategyStageAddGroupLabel(type)}</strong>
+                          {addableStrategyStageTypes.includes(type) && (
+                            <button onClick={() => addStrategyStage(type)} type="button">
+                              단계 추가
+                            </button>
+                          )}
+                        </div>
+                        {groupStages.map((stage) => (
+                          <div
+                            className={`stage-editor-row ${stage.type} ${stage.enabled === false ? 'disabled' : ''}`}
+                            key={stage.id}
+                          >
+                            <strong>
+                              <span>{getStrategyStageShortLabel(stage)}</span>
+                              <small>{getStrategyStageTypeLabel(stage)}</small>
+                            </strong>
+                            <label className="stage-enabled-toggle">
+                              <span>사용</span>
+                              <input
+                                checked={stage.enabled !== false}
+                                onChange={(event) => updateStrategyStage(stage.id, 'enabled', event.target.checked)}
+                                type="checkbox"
+                              />
+                            </label>
+                            <label>
+                              <span>{getStrategyStageTriggerLabel(stage)}</span>
+                              <input
+                                onChange={(event) => updateStrategyStage(stage.id, 'trigger', Number(event.target.value))}
+                                type="number"
+                                value={stage.trigger}
+                              />
+                            </label>
+                            <label>
+                              <span>{getStrategyStageQuantityLabel(stage)}</span>
+                              <input
+                                disabled={stage.type === 'crash-full-sell' || stage.type === 'post-full-sell-reentry'}
+                                max="100"
+                                min="1"
+                                onChange={(event) =>
+                                  updateStrategyStage(stage.id, 'quantityPercent', Number(event.target.value))
+                                }
+                                type="number"
+                                value={stage.quantityPercent}
+                              />
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
               <div className="backtest-result-card">
