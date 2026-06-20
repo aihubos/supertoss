@@ -3948,9 +3948,9 @@ button {
   top: 0;
   z-index: 30;
   grid-template-columns:
-    minmax(138px, 0.24fr)
-    minmax(260px, 0.5fr)
-    minmax(360px, 1fr);
+    minmax(118px, 0.22fr)
+    minmax(210px, 0.44fr)
+    minmax(0, 1fr);
   gap: 10px;
   align-items: stretch;
   margin: 0 0 18px;
